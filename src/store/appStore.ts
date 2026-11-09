@@ -1516,6 +1516,25 @@ export const useAppStore = create<AppState>()((set, get) => {
   };
 
   /**
+   * The change log, fetched once the data has landed rather than with it. Only
+   * the history export reads it, and a load that fetched it alongside waited
+   * for it too — the slowest of its requests, seconds on a cold database —
+   * before the page could be edited. Entries logged here meanwhile, not yet
+   * among those fetched, stay on top.
+   */
+  const loadChangeLogAfterData = (orgId: string) => {
+    loadChangeLog(orgId)
+      .then((fetched) => {
+        if (get().organizationId !== orgId) return;
+        const newest = fetched.length > 0 ? Date.parse(fetched[0].timestamp) : -Infinity;
+        set((s) => ({
+          changeLog: [...s.changeLog.filter((e) => !e.id && Date.parse(e.timestamp) > newest), ...fetched].slice(0, 5000),
+        }));
+      })
+      .catch(() => {});
+  };
+
+  /**
    * Behind the cached copy: send what is queued, fetch everything, and put it
    * in the store and the cache — unless the reader edited meanwhile, when only
    * the cache is written and another refresh follows. One at a time per
@@ -1535,10 +1554,9 @@ export const useAppStore = create<AppState>()((set, get) => {
         await flushPendingWorkItemUpserts(orgId, { backlogs: get().backlogs, backlogTrees: get().backlogTrees }).catch(() => {});
         await flushPendingRankUpserts(orgId).catch(() => {});
         await flushPendingBoardRankUpserts(orgId).catch(() => {});
-        const [rawData, allHyperlinks, dbChangeLog] = await Promise.all([
+        const [rawData, allHyperlinks] = await Promise.all([
           loadFromSupabase(orgId),
           loadHyperlinksForWorkItems([], orgId).catch(() => ({} as Record<string, Hyperlink[]>)),
-          loadChangeLog(orgId).catch(() => [] as ChangeLogEntry[]),
         ]);
         const cacheIt = (data: { workItems: Record<string, WorkItem>; backlogs: Record<string, Backlog>; backlogTrees: Record<string, BacklogTree> }, hyperlinks: Record<string, Hyperlink[]>) =>
           writeCachedAppData(orgId, {
@@ -1546,7 +1564,7 @@ export const useAppStore = create<AppState>()((set, get) => {
             backlogs: data.backlogs,
             backlogTrees: data.backlogTrees,
             hyperlinks,
-            changeLog: dbChangeLog as ChangeLogEntry[],
+            changeLog: get().changeLog,
             selectedBacklogIds: get().selectedBacklogIds,
             selectedTreeId: get().selectedTreeId,
             selectedWorkItemIds: get().selectedWorkItemIds,
@@ -1576,13 +1594,13 @@ export const useAppStore = create<AppState>()((set, get) => {
             backlogs: cleanData.backlogs,
             backlogTrees: cleanData.backlogTrees,
             hyperlinks,
-            changeLog: dbChangeLog as ChangeLogEntry[],
             // Preserve current selection.
             selectedBacklogIds: get().selectedBacklogIds,
             selectedTreeId: get().selectedTreeId,
             selectedWorkItemIds: get().selectedWorkItemIds,
           });
           saveLoadRankRepairs(rankRepairs, cleanData.workItems, orgId);
+          loadChangeLogAfterData(orgId);
         }
       } catch {
         // Background refresh failed — cached data is still shown.
@@ -1721,7 +1739,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         ...cleanData,
         workItems: finalWorkItems,
         hyperlinks,
-        // changeLog loaded lazily via loadChangeLog action.
+        // Fetched once this has landed (loadChangeLogAfterData below).
         changeLog: [],
         isLoading: false,
         workItemsLoading: false,
@@ -1734,6 +1752,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         expandedBacklogs,
         expandedWorkItems,
       });
+      loadChangeLogAfterData(orgId);
     } catch {
       clearTimeout(timeoutId);
       if (get().organizationId === orgId) set({ isLoading: false, workItemsLoading: false, loadingProgress: 0 });

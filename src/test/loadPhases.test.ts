@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAppStore } from "@/store/appStore";
 import { loadFromSupabase as loadDataFromSupabase, loadHyperlinksForWorkItems } from "@/store/supabaseSync";
 import { writeCachedAppData, flushCachedWrites } from "@/store/appDataCache";
+import { loadChangeLog } from "@/store/changeLog";
 
 vi.mock("@/store/supabaseSync", () => ({
   loadFromSupabase: vi.fn(),
@@ -165,5 +166,26 @@ describe("a load", () => {
     await useAppStore.getState().loadFromSupabase();
     await waitFor(() => !useAppStore.getState().workItemsRefreshing, "the refresh to land");
     expect(useAppStore.getState().workItems[ids.child]?.backlogAssignments).toEqual({ [ids.tree]: ids.backlog });
+  });
+
+  it("does not wait for the change log: it is fetched once the data has landed", async () => {
+    const ids = freshOrg();
+    await seedCacheWithOldHierarchy(ids);
+    vi.mocked(loadDataFromSupabase).mockResolvedValue({ ...structureFor(ids), workItems: itemsFor(ids, true) } as never);
+    let answer!: (entries: never[]) => void;
+    vi.mocked(loadChangeLog).mockImplementationOnce(() => new Promise((r) => { answer = r as never; }));
+    useAppStore.setState({ organizationId: ids.org });
+    await useAppStore.getState().loadFromSupabase();
+    // The log has not answered, and the fresh data is in: the page can be edited.
+    await waitFor(() => !useAppStore.getState().workItemsRefreshing, "the refresh to land");
+    expect(useAppStore.getState().workItems[ids.child]?.parentId).toBe(ids.parent);
+    expect(useAppStore.getState().catchingUp).toBe(false);
+    expect(loadChangeLog).toHaveBeenCalledWith(ids.org);
+
+    // Logged here before the log answers, and not yet saved: kept on top.
+    useAppStore.getState().logChange({ action: "Rename", entityType: "work_item", entityId: ids.child });
+    answer([{ id: "e1", timestamp: "2020-01-01T00:00:00Z", action: "Create", entityType: "work_item" }] as never[]);
+    await waitFor(() => useAppStore.getState().changeLog.length === 2, "the log to land");
+    expect(useAppStore.getState().changeLog.map((e) => e.action)).toEqual(["Rename", "Create"]);
   });
 });
