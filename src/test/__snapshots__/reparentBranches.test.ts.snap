@@ -628,6 +628,7 @@ exports[`reparentWorkItem, branch by branch > within one tree and one list, at a
     },
   },
   "saved": [
+    "kid2",
     "p",
     "q",
   ],
