@@ -29,7 +29,7 @@ import { peekCurrentUser } from "@/lib/currentUser";
 import { rowClickIntent } from "@/lib/rowClick";
 import { effectiveChildren } from "@/lib/workItemRows";
 import { useWorkItemTotalMinutes } from "@/lib/timeTotals";
-import { formatDeadline, isDeadlinePassed } from "@/lib/workItemDeadline";
+import { formatDeadline, isDeadlinePassed } from "@/lib/deadlineFormat";
 import { StarRating } from "@/components/StarRating";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { formatDuration } from "../TimeLogDialog";
