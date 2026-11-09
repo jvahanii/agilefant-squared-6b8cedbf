@@ -1,0 +1,2036 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`live updates > of items 1`] = `
+[
+  {
+    "event": "insert a new item, with the legacy rank",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "added": {
+        "n1": {
+          "backlogAssignments": {
+            "t1": "b2",
+          },
+          "boardRanks": {},
+          "changedAt": "2026-11-01T10:00:00Z",
+          "childrenIds": [],
+          "id": "n1",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b2": 7,
+          },
+          "respawnEnabled": false,
+          "status": "in_progress",
+          "title": "New",
+        },
+      },
+    },
+  },
+  {
+    "event": "insert a child under w6",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "added": {
+        "n2": {
+          "backlogAssignments": {
+            "t1": "b2",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "id": "n2",
+          "organizationId": "slices-org",
+          "parentId": "w6",
+          "ranks": {},
+          "respawnEnabled": false,
+          "status": "not_started",
+          "title": "Child",
+        },
+      },
+      "changed": {
+        "w6": {
+          "backlogAssignments": {
+            "t1": "b2",
+          },
+          "boardRanks": {},
+          "childrenIds": [
+            "n2",
+          ],
+          "id": "w6",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b2": 0,
+          },
+          "status": "not_started",
+          "title": "w6",
+        },
+      },
+    },
+  },
+  {
+    "event": "the echo of n2 as it is",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+  {
+    "event": "insert of an item deleted here a moment ago",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+  {
+    "event": "w3 renamed, no assignments in the row",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w3": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "createdOn": "2026-01-02",
+          "deadline": "2026-12-01",
+          "description": "d",
+          "id": "w3",
+          "organizationId": "slices-org",
+          "parentId": "w2",
+          "points": 3,
+          "ranks": {
+            "b1": 2,
+          },
+          "rating": 4,
+          "respawnEnabled": false,
+          "startedOn": "2026-02-03",
+          "status": "not_started",
+          "title": "W3 renamed",
+        },
+      },
+    },
+  },
+  {
+    "event": "w4 with only tree two's assignment",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w4": {
+          "backlogAssignments": {
+            "t1": "b1",
+            "t2": "b3",
+          },
+          "boardRanks": {
+            "b1": 5,
+          },
+          "childrenIds": [
+            "w5",
+          ],
+          "id": "w4",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 3,
+            "b3": 0,
+          },
+          "respawnEnabled": false,
+          "status": "not_started",
+          "title": "w4",
+        },
+      },
+    },
+  },
+  {
+    "event": "w4 with tree one's assignment emptied",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w4": {
+          "backlogAssignments": {
+            "t2": "b3",
+          },
+          "boardRanks": {
+            "b1": 5,
+          },
+          "childrenIds": [
+            "w5",
+          ],
+          "id": "w4",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 3,
+            "b3": 0,
+          },
+          "respawnEnabled": false,
+          "status": "not_started",
+          "title": "w4",
+        },
+      },
+    },
+  },
+  {
+    "event": "w6 in the legacy enriched form",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w6": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [
+            "n2",
+          ],
+          "id": "w6",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b2": 0,
+          },
+          "respawnEnabled": false,
+          "status": "not_started",
+          "title": "w6",
+        },
+      },
+    },
+  },
+  {
+    "event": "w3 moved under w1",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w1": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [
+            "w2",
+            "w5",
+            "w3",
+          ],
+          "id": "w1",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 0,
+          },
+          "status": "not_started",
+          "title": "w1",
+        },
+        "w2": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "id": "w2",
+          "organizationId": "slices-org",
+          "parentId": "w1",
+          "ranks": {
+            "b1": 1,
+          },
+          "status": "not_started",
+          "title": "w2",
+        },
+        "w3": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "createdOn": "2026-01-02",
+          "id": "w3",
+          "organizationId": "slices-org",
+          "parentId": "w1",
+          "ranks": {
+            "b1": 2,
+          },
+          "respawnEnabled": false,
+          "startedOn": "2026-02-03",
+          "status": "not_started",
+          "title": "W3 renamed",
+        },
+      },
+    },
+  },
+  {
+    "event": "w3 given w4 as parent in tree two",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w3": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "createdOn": "2026-01-02",
+          "id": "w3",
+          "organizationId": "slices-org",
+          "parentId": "w1",
+          "parentIds": {
+            "t2": "w4",
+          },
+          "ranks": {
+            "b1": 2,
+          },
+          "respawnEnabled": false,
+          "startedOn": "2026-02-03",
+          "status": "not_started",
+          "title": "W3 renamed",
+        },
+        "w4": {
+          "backlogAssignments": {
+            "t2": "b3",
+          },
+          "boardRanks": {
+            "b1": 5,
+          },
+          "childrenIds": [
+            "w5",
+            "w3",
+          ],
+          "id": "w4",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 3,
+            "b3": 0,
+          },
+          "respawnEnabled": false,
+          "status": "not_started",
+          "title": "w4",
+        },
+      },
+    },
+  },
+  {
+    "event": "w3 without the overrides column (kept)",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w3": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "createdOn": "2026-01-02",
+          "id": "w3",
+          "organizationId": "slices-org",
+          "parentId": "w1",
+          "parentIds": {
+            "t2": "w4",
+          },
+          "ranks": {
+            "b1": 2,
+          },
+          "respawnEnabled": true,
+          "respawnHour": 8,
+          "respawnIntervalDays": 7,
+          "respawnMinute": 30,
+          "startedOn": "2026-02-03",
+          "status": "not_started",
+          "title": "W3 again",
+        },
+      },
+    },
+  },
+  {
+    "event": "w3 with its overrides cleared",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w3": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "createdOn": "2026-01-02",
+          "endedOn": "2026-03-04",
+          "id": "w3",
+          "organizationId": "slices-org",
+          "parentId": "w1",
+          "ranks": {
+            "b1": 2,
+          },
+          "respawnEnabled": false,
+          "status": "not_started",
+          "title": "W3 again",
+        },
+        "w4": {
+          "backlogAssignments": {
+            "t2": "b3",
+          },
+          "boardRanks": {
+            "b1": 5,
+          },
+          "childrenIds": [
+            "w5",
+          ],
+          "id": "w4",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 3,
+            "b3": 0,
+          },
+          "respawnEnabled": false,
+          "status": "not_started",
+          "title": "w4",
+        },
+      },
+    },
+  },
+  {
+    "event": "w5 overrides as an array (none)",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w1": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [
+            "w2",
+            "w3",
+          ],
+          "id": "w1",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 0,
+          },
+          "status": "not_started",
+          "title": "w1",
+        },
+        "w5": {
+          "backlogAssignments": {
+            "t1": "b1",
+            "t2": "b3",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "id": "w5",
+          "organizationId": "slices-org",
+          "parentId": "w4",
+          "ranks": {
+            "b1": 4,
+            "b3": 1,
+          },
+          "respawnEnabled": false,
+          "status": "not_started",
+          "title": "w5",
+        },
+      },
+    },
+  },
+  {
+    "event": "w2 deleted: w3's old parent, now orphan-free",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w1": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [
+            "w3",
+          ],
+          "id": "w1",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 0,
+          },
+          "status": "not_started",
+          "title": "w1",
+        },
+      },
+      "removed": [
+        "w2",
+      ],
+    },
+  },
+  {
+    "event": "w1 deleted: its children promoted to the root",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w3": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "createdOn": "2026-01-02",
+          "endedOn": "2026-03-04",
+          "id": "w3",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 2,
+          },
+          "respawnEnabled": false,
+          "status": "not_started",
+          "title": "W3 again",
+        },
+      },
+      "removed": [
+        "w1",
+      ],
+    },
+  },
+  {
+    "event": "w4 given a parent, then w6 deleted with w4 under it",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "n1": {
+          "backlogAssignments": {
+            "t1": "b2",
+          },
+          "boardRanks": {},
+          "changedAt": "2026-11-01T10:00:00Z",
+          "childrenIds": [
+            "w4",
+            "n2",
+          ],
+          "id": "n1",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b2": 7,
+          },
+          "respawnEnabled": false,
+          "status": "in_progress",
+          "title": "New",
+        },
+        "n2": {
+          "backlogAssignments": {
+            "t1": "b2",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "id": "n2",
+          "organizationId": "slices-org",
+          "parentId": "n1",
+          "ranks": {},
+          "respawnEnabled": false,
+          "status": "not_started",
+          "title": "Child",
+        },
+        "w4": {
+          "backlogAssignments": {
+            "t2": "b3",
+          },
+          "boardRanks": {
+            "b1": 5,
+          },
+          "childrenIds": [
+            "w5",
+          ],
+          "id": "w4",
+          "organizationId": "slices-org",
+          "parentId": "n1",
+          "ranks": {
+            "b1": 3,
+            "b3": 0,
+          },
+          "respawnEnabled": false,
+          "status": "not_started",
+          "title": "w4",
+        },
+      },
+      "removed": [
+        "w6",
+      ],
+    },
+  },
+  {
+    "event": "delete of an unknown item",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+]
+`;
+
+exports[`live updates > of links 1`] = `
+[
+  {
+    "event": "a new link for w1, ranked first",
+    "hyperlinks": {
+      "changed": {
+        "w1": [
+          {
+            "altText": "C",
+            "id": "h3",
+            "rank": -1,
+            "url": "https://c.example",
+            "workItemId": "w1",
+          },
+          {
+            "altText": "A",
+            "id": "h1",
+            "rank": 0,
+            "url": "https://a.example",
+            "workItemId": "w1",
+          },
+          {
+            "altText": "B",
+            "id": "h2",
+            "rank": 1,
+            "url": "https://b.example",
+            "workItemId": "w1",
+          },
+        ],
+      },
+    },
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+    ],
+  },
+  {
+    "event": "h1 moved last, no alt text",
+    "hyperlinks": {
+      "changed": {
+        "w1": [
+          {
+            "altText": "C",
+            "id": "h3",
+            "rank": -1,
+            "url": "https://c.example",
+            "workItemId": "w1",
+          },
+          {
+            "altText": "B",
+            "id": "h2",
+            "rank": 1,
+            "url": "https://b.example",
+            "workItemId": "w1",
+          },
+          {
+            "altText": "",
+            "id": "h1",
+            "rank": 5,
+            "url": "https://a2.example",
+            "workItemId": "w1",
+          },
+        ],
+      },
+    },
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+    ],
+  },
+  {
+    "event": "a first link for w2, no rank",
+    "hyperlinks": {
+      "added": {
+        "w2": [
+          {
+            "altText": "D",
+            "id": "h4",
+            "rank": 0,
+            "url": "https://d.example",
+            "workItemId": "w2",
+          },
+        ],
+      },
+    },
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+    ],
+  },
+  {
+    "event": "h2 deleted",
+    "hyperlinks": {
+      "changed": {
+        "w1": [
+          {
+            "altText": "C",
+            "id": "h3",
+            "rank": -1,
+            "url": "https://c.example",
+            "workItemId": "w1",
+          },
+          {
+            "altText": "",
+            "id": "h1",
+            "rank": 5,
+            "url": "https://a2.example",
+            "workItemId": "w1",
+          },
+        ],
+      },
+    },
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+    ],
+  },
+  {
+    "event": "an unknown link deleted",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+  {
+    "event": "a link of an item without links deleted",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+]
+`;
+
+exports[`live updates > of lists and trees 1`] = `
+[
+  {
+    "backlogTrees": {
+      "changed": {
+        "t2": {
+          "id": "t2",
+          "name": "T2",
+          "rank": 1,
+          "rootBacklogIds": [
+            "n1",
+            "b3",
+          ],
+        },
+      },
+    },
+    "backlogs": {
+      "added": {
+        "n1": {
+          "boardHiddenStatusKeys": [],
+          "childrenIds": [],
+          "id": "n1",
+          "name": "N1",
+          "parentId": null,
+          "rank": -1,
+          "treeId": "t2",
+          "viewMode": "list",
+        },
+      },
+    },
+    "event": "a new list at the root of t2",
+    "untouched": [
+      "workItems",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogs": {
+      "added": {
+        "n2": {
+          "boardHiddenStatusKeys": [
+            "done",
+          ],
+          "childrenIds": [],
+          "id": "n2",
+          "name": "N2",
+          "parentId": "b1",
+          "points": 8,
+          "rank": 0.5,
+          "ratingsEnabled": true,
+          "treeId": "t1",
+          "viewMode": "board",
+        },
+      },
+      "changed": {
+        "b1": {
+          "childrenIds": [
+            "b1a",
+            "n2",
+            "b1b",
+          ],
+          "id": "b1",
+          "name": "B1",
+          "parentId": null,
+          "rank": 0,
+          "treeId": "t1",
+        },
+      },
+    },
+    "event": "a new list under b1, ranked between",
+    "untouched": [
+      "workItems",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogs": {
+      "changed": {
+        "n2": {
+          "boardHiddenStatusKeys": [],
+          "childrenIds": [],
+          "id": "n2",
+          "name": "N2b",
+          "parentId": "b1",
+          "points": 8,
+          "rank": 0.5,
+          "ratingsEnabled": true,
+          "treeId": "t1",
+          "viewMode": "list",
+        },
+      },
+    },
+    "event": "n2 renamed, the columns left out (kept)",
+    "untouched": [
+      "workItems",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogs": {
+      "changed": {
+        "n2": {
+          "boardHiddenStatusKeys": [],
+          "childrenIds": [],
+          "createdDatesEnabled": true,
+          "id": "n2",
+          "name": "N2b",
+          "parentId": "b1",
+          "rank": 0.5,
+          "ratingsEnabled": false,
+          "startEndDatesEnabled": true,
+          "treeId": "t1",
+          "viewMode": "timeline",
+        },
+      },
+    },
+    "event": "n2 switches given (off, on, on), points cleared",
+    "untouched": [
+      "workItems",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogs": {
+      "changed": {
+        "b1": {
+          "childrenIds": [
+            "b1b",
+            "b1a",
+            "n2",
+          ],
+          "id": "b1",
+          "name": "B1",
+          "parentId": null,
+          "rank": 0,
+          "treeId": "t1",
+        },
+        "b1b": {
+          "boardHiddenStatusKeys": [],
+          "childrenIds": [],
+          "id": "b1b",
+          "name": "B1b",
+          "parentId": "b1",
+          "rank": -5,
+          "treeId": "t1",
+          "viewMode": "list",
+        },
+      },
+    },
+    "event": "b1b ranked first under b1",
+    "untouched": [
+      "workItems",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogTrees": {
+      "changed": {
+        "t1": {
+          "id": "t1",
+          "name": "T1",
+          "rank": 0,
+          "rootBacklogIds": [
+            "b2",
+            "b1",
+          ],
+        },
+      },
+    },
+    "backlogs": {
+      "changed": {
+        "b2": {
+          "boardHiddenStatusKeys": [],
+          "childrenIds": [],
+          "id": "b2",
+          "name": "B2",
+          "parentId": null,
+          "rank": -5,
+          "treeId": "t1",
+          "viewMode": "list",
+        },
+      },
+    },
+    "event": "b2 ranked first among t1's roots",
+    "untouched": [
+      "workItems",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogs": {
+      "changed": {
+        "b1": {
+          "childrenIds": [
+            "b1b",
+            "n2",
+          ],
+          "id": "b1",
+          "name": "B1",
+          "parentId": null,
+          "rank": 0,
+          "treeId": "t1",
+        },
+        "b1a": {
+          "boardHiddenStatusKeys": [],
+          "childrenIds": [
+            "b1a1",
+          ],
+          "id": "b1a",
+          "name": "B1a",
+          "parentId": "b2",
+          "rank": 0,
+          "treeId": "t1",
+          "viewMode": "list",
+        },
+        "b2": {
+          "boardHiddenStatusKeys": [],
+          "childrenIds": [
+            "b1a",
+          ],
+          "id": "b2",
+          "name": "B2",
+          "parentId": null,
+          "rank": -5,
+          "treeId": "t1",
+          "viewMode": "list",
+        },
+      },
+    },
+    "event": "b1a moved under b2",
+    "untouched": [
+      "workItems",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogTrees": {
+      "changed": {
+        "t1": {
+          "id": "t1",
+          "name": "T1",
+          "rank": 0,
+          "rootBacklogIds": [
+            "b1",
+          ],
+        },
+        "t2": {
+          "id": "t2",
+          "name": "T2",
+          "rank": 1,
+          "rootBacklogIds": [
+            "n1",
+            "b3",
+            "b2",
+          ],
+        },
+      },
+    },
+    "backlogs": {
+      "changed": {
+        "b2": {
+          "boardHiddenStatusKeys": [],
+          "childrenIds": [
+            "b1a",
+          ],
+          "id": "b2",
+          "name": "B2",
+          "parentId": null,
+          "rank": 3,
+          "treeId": "t2",
+          "viewMode": "list",
+        },
+      },
+    },
+    "event": "b2 moved to tree two's root",
+    "untouched": [
+      "workItems",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogs": {
+      "changed": {
+        "b1a": {
+          "boardHiddenStatusKeys": [],
+          "childrenIds": [],
+          "id": "b1a",
+          "name": "B1a",
+          "parentId": "b2",
+          "rank": 0,
+          "treeId": "t1",
+          "viewMode": "list",
+        },
+      },
+      "removed": [
+        "b1a1",
+      ],
+    },
+    "event": "b1a1 deleted (a child)",
+    "untouched": [
+      "workItems",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogTrees": {
+      "changed": {
+        "t2": {
+          "id": "t2",
+          "name": "T2",
+          "rank": 1,
+          "rootBacklogIds": [
+            "b3",
+            "b2",
+          ],
+        },
+      },
+    },
+    "backlogs": {
+      "removed": [
+        "n1",
+      ],
+    },
+    "event": "n1 deleted (a root)",
+    "untouched": [
+      "workItems",
+      "hyperlinks",
+    ],
+  },
+  {
+    "event": "an unknown list deleted",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogTrees": {
+      "added": {
+        "t3": {
+          "id": "t3",
+          "name": "T3",
+          "pointsEnabled": null,
+          "rank": 2,
+          "rootBacklogIds": [],
+        },
+      },
+    },
+    "event": "a new tree",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogTrees": {
+      "changed": {
+        "t1": {
+          "id": "t1",
+          "name": "T1b",
+          "pointsEnabled": true,
+          "rank": 0,
+          "rootBacklogIds": [
+            "b1",
+          ],
+        },
+      },
+    },
+    "event": "t1 renamed, points on",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "hyperlinks",
+    ],
+  },
+  {
+    "backlogTrees": {
+      "removed": [
+        "t3",
+      ],
+    },
+    "event": "t3 deleted",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "hyperlinks",
+    ],
+  },
+  {
+    "event": "an unknown tree deleted",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+]
+`;
+
+exports[`live updates > of ranks and board ranks 1`] = `
+[
+  {
+    "event": "w5 to the top of b1: its parent w4's children re-sorted",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w5": {
+          "backlogAssignments": {
+            "t1": "b1",
+            "t2": "b3",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "id": "w5",
+          "organizationId": "slices-org",
+          "parentId": "w4",
+          "parentIds": {
+            "t2": "w1",
+          },
+          "ranks": {
+            "b1": -1,
+            "b3": 1,
+          },
+          "status": "not_started",
+          "title": "w5",
+        },
+      },
+    },
+  },
+  {
+    "event": "w2 below w5 in b1: w1's children re-sorted",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w1": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [
+            "w5",
+            "w2",
+          ],
+          "id": "w1",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 0,
+          },
+          "status": "not_started",
+          "title": "w1",
+        },
+        "w2": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [
+            "w3",
+          ],
+          "id": "w2",
+          "organizationId": "slices-org",
+          "parentId": "w1",
+          "ranks": {
+            "b1": 9,
+          },
+          "status": "not_started",
+          "title": "w2",
+        },
+      },
+    },
+  },
+  {
+    "event": "a batch: w2 and w5 swapped in b3 of tree two",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w1": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [
+            "w2",
+            "w5",
+          ],
+          "id": "w1",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 0,
+          },
+          "status": "not_started",
+          "title": "w1",
+        },
+        "w2": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [
+            "w3",
+          ],
+          "id": "w2",
+          "organizationId": "slices-org",
+          "parentId": "w1",
+          "ranks": {
+            "b1": 9,
+            "b3": 2,
+          },
+          "status": "not_started",
+          "title": "w2",
+        },
+        "w5": {
+          "backlogAssignments": {
+            "t1": "b1",
+            "t2": "b3",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "id": "w5",
+          "organizationId": "slices-org",
+          "parentId": "w4",
+          "parentIds": {
+            "t2": "w1",
+          },
+          "ranks": {
+            "b1": -1,
+            "b3": 3,
+          },
+          "status": "not_started",
+          "title": "w5",
+        },
+      },
+    },
+  },
+  {
+    "event": "the same rank again",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+  {
+    "event": "a rank without a number",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w3": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "id": "w3",
+          "organizationId": "slices-org",
+          "parentId": "w2",
+          "ranks": {
+            "b1": 0,
+          },
+          "status": "not_started",
+          "title": "w3",
+        },
+      },
+    },
+  },
+  {
+    "event": "a rank for an unknown list",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w3": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [],
+          "id": "w3",
+          "organizationId": "slices-org",
+          "parentId": "w2",
+          "ranks": {
+            "b1": 0,
+            "zz": 1,
+          },
+          "status": "not_started",
+          "title": "w3",
+        },
+      },
+    },
+  },
+  {
+    "event": "a rank deleted",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w2": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {},
+          "childrenIds": [
+            "w3",
+          ],
+          "id": "w2",
+          "organizationId": "slices-org",
+          "parentId": "w1",
+          "ranks": {
+            "b1": 9,
+          },
+          "status": "not_started",
+          "title": "w2",
+        },
+      },
+    },
+  },
+  {
+    "event": "a rank deleted that is not held",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+  {
+    "event": "a rank for an unknown item",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+  {
+    "event": "a board rank",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w1": {
+          "backlogAssignments": {
+            "t1": "b1",
+          },
+          "boardRanks": {
+            "b1": 2,
+          },
+          "childrenIds": [
+            "w2",
+            "w5",
+          ],
+          "id": "w1",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 0,
+          },
+          "status": "not_started",
+          "title": "w1",
+        },
+      },
+    },
+  },
+  {
+    "event": "the same board rank",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+  {
+    "event": "a board rank without a number",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w4": {
+          "backlogAssignments": {
+            "t1": "b1",
+            "t2": "b3",
+          },
+          "boardRanks": {
+            "b1": 5,
+            "b3": 0,
+          },
+          "childrenIds": [
+            "w5",
+          ],
+          "id": "w4",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 3,
+            "b3": 0,
+          },
+          "status": "not_started",
+          "title": "w4",
+        },
+      },
+    },
+  },
+  {
+    "event": "a board rank deleted",
+    "untouched": [
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+    "workItems": {
+      "changed": {
+        "w4": {
+          "backlogAssignments": {
+            "t1": "b1",
+            "t2": "b3",
+          },
+          "boardRanks": {
+            "b3": 0,
+          },
+          "childrenIds": [
+            "w5",
+          ],
+          "id": "w4",
+          "organizationId": "slices-org",
+          "parentId": null,
+          "ranks": {
+            "b1": 3,
+            "b3": 0,
+          },
+          "status": "not_started",
+          "title": "w4",
+        },
+      },
+    },
+  },
+  {
+    "event": "a board rank deleted that is not held",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+  {
+    "event": "a board rank for an unknown item",
+    "untouched": [
+      "workItems",
+      "backlogs",
+      "backlogTrees",
+      "hyperlinks",
+    ],
+  },
+]
+`;
+
+exports[`selection and expansion > step by step, before an organization is known: nothing is kept in the browser 1`] = `
+{
+  "items": [
+    "w1",
+    "w2",
+    "w3",
+  ],
+  "kept": {},
+  "lists": [
+    "b1",
+  ],
+  "openItems": [],
+  "openLists": [],
+  "tree": "t1",
+}
+`;
+
+exports[`selection and expansion > step by step, before an organization is known: nothing is kept in the browser 2`] = `
+{
+  "items": [],
+  "kept": {},
+  "lists": [
+    "b1",
+  ],
+  "openItems": [],
+  "openLists": [],
+  "tree": "t1",
+}
+`;
+
+exports[`selection and expansion > step by step, with an organization 1`] = `
+[
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t2",
+    },
+    "lists": [],
+    "openItems": [],
+    "openLists": [],
+    "step": "select tree t2",
+    "tree": "t2",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b1"]",
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [
+      "b1",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "select list b1 of t1",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b1","b2"]",
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [
+      "b1",
+      "b2",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "ctrl-select b2",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b2"]",
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [
+      "b2",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "ctrl-select b1 again (drops it)",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b3"]",
+      "selection_slices-org_treeId": "t2",
+    },
+    "lists": [
+      "b3",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "ctrl-select b3 of the other tree",
+    "tree": "t2",
+  },
+  {
+    "items": [
+      "w1",
+    ],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b3"]",
+      "selection_slices-org_treeId": "t2",
+      "selection_slices-org_workItemIds": "["w1"]",
+    },
+    "lists": [
+      "b3",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "select w1",
+    "tree": "t2",
+  },
+  {
+    "items": [
+      "w1",
+      "w2",
+    ],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b3"]",
+      "selection_slices-org_treeId": "t2",
+      "selection_slices-org_workItemIds": "["w1","w2"]",
+    },
+    "lists": [
+      "b3",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "ctrl-select w2",
+    "tree": "t2",
+  },
+  {
+    "items": [
+      "w2",
+    ],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b3"]",
+      "selection_slices-org_treeId": "t2",
+      "selection_slices-org_workItemIds": "["w2"]",
+    },
+    "lists": [
+      "b3",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "ctrl-select w1 again (drops it)",
+    "tree": "t2",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b3"]",
+      "selection_slices-org_treeId": "t2",
+    },
+    "lists": [
+      "b3",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "select nothing",
+    "tree": "t2",
+  },
+  {
+    "items": [
+      "w1",
+      "w2",
+      "w3",
+    ],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b3"]",
+      "selection_slices-org_treeId": "t2",
+      "selection_slices-org_workItemIds": "["w1","w2","w3"]",
+    },
+    "lists": [
+      "b3",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "select range w1..w3",
+    "tree": "t2",
+  },
+  {
+    "items": [
+      "w1",
+      "w2",
+      "w3",
+      "w4",
+    ],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b3"]",
+      "selection_slices-org_treeId": "t2",
+      "selection_slices-org_workItemIds": "["w1","w2","w3","w4"]",
+    },
+    "lists": [
+      "b3",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "add range w3, w4, w4",
+    "tree": "t2",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b1"]",
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [
+      "b1",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "select list b1 (clears the items)",
+    "tree": "t1",
+  },
+  {
+    "items": [
+      "w6",
+    ],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b1"]",
+      "selection_slices-org_treeId": "t1",
+      "selection_slices-org_workItemIds": "["w6"]",
+    },
+    "lists": [
+      "b1",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "select range w6",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_backlogIds": "["b1"]",
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [
+      "b1",
+    ],
+    "openItems": [],
+    "openLists": [],
+    "step": "clear item selection",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [],
+    "openLists": [],
+    "step": "select tree t1 (clears all)",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w1",
+    ],
+    "openLists": [],
+    "step": "toggle w1 open",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w1",
+      "w4",
+    ],
+    "openLists": [],
+    "step": "toggle w4 open",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [],
+    "step": "toggle w1 shut",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+      "w1",
+      "w2",
+    ],
+    "openLists": [],
+    "step": "open all under w1",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+      "w1",
+      "w2",
+    ],
+    "openLists": [],
+    "step": "open all under w3 (a leaf)",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+      "w1",
+    ],
+    "openLists": [],
+    "step": "shut all under w2",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [],
+    "step": "shut all under w1",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [
+      "b1",
+    ],
+    "step": "toggle b1 open",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [],
+    "step": "toggle b1 shut",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [
+      "b1",
+      "b1a",
+    ],
+    "step": "open all under b1",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [
+      "b1",
+      "b1a",
+    ],
+    "step": "open all under b2 (a leaf)",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [
+      "b1",
+    ],
+    "step": "shut all under b1a",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [],
+    "step": "shut all under b1",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [],
+    "step": "open all under an unknown item",
+    "tree": "t1",
+  },
+  {
+    "items": [],
+    "kept": {
+      "selection_slices-org_treeId": "t1",
+    },
+    "lists": [],
+    "openItems": [
+      "w4",
+    ],
+    "openLists": [],
+    "step": "shut all under an unknown list",
+    "tree": "t1",
+  },
+]
+`;
