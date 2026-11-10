@@ -322,6 +322,13 @@ function panelAsDrawn() {
 
 const filterBox = () => document.querySelector("[role=combobox]") as HTMLInputElement;
 
+/**
+ * A label or team chip under the filter box. Looked for there, not in the whole
+ * panel: naming every button of every row took jsdom about 4 s, and pushed
+ * these tests past the time limit whenever the machine was busy.
+ */
+const chip = (name: string) => within(filterBox().parentElement!.parentElement!).getByRole("button", { name });
+
 async function typeSearch(text: string) {
   await act(async () => {
     fireEvent.change(filterBox(), { target: { value: text } });
@@ -359,7 +366,7 @@ describe("the list panel", () => {
   it("lists the items with a label chosen, and goes to one", async () => {
     seed();
     fireEvent.focus(filterBox());
-    fireEvent.click(screen.getByRole("button", { name: "Urgent" }));
+    fireEvent.click(chip("Urgent"));
     await settle();
     expect(panelAsDrawn()).toMatchSnapshot();
     fireEvent.click(document.querySelector("[role=option]")!);
@@ -370,7 +377,7 @@ describe("the list panel", () => {
   it("lists the items with a team chosen", async () => {
     seed();
     fireEvent.focus(filterBox());
-    fireEvent.click(screen.getByRole("button", { name: "Red" }));
+    fireEvent.click(chip("Red"));
     await settle();
     expect(screen.getByText("Team filter results")).toBeInTheDocument();
     expect([...document.querySelectorAll("[role=option]")].map((o) => o.textContent)).toMatchSnapshot();
@@ -429,7 +436,7 @@ describe("the list panel", () => {
   it("clears the search and the filters with Escape", async () => {
     seed();
     fireEvent.focus(filterBox());
-    fireEvent.click(screen.getByRole("button", { name: "Urgent" }));
+    fireEvent.click(chip("Urgent"));
     await typeSearch("Item");
     fireEvent.keyDown(filterBox(), { key: "Escape" });
     await settle();

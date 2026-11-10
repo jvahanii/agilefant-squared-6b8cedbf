@@ -1,26 +1,31 @@
 /**
- * Performance regression tests: seed realistic-scale datasets and assert
- * that core store operations complete within acceptable time bounds.
+ * Performance regression tests: seed realistic-scale datasets and check that
+ * core store operations stay fast, and that their cost grows with the data as
+ * it should.
  *
  * All DB calls are mocked (identical pattern to appStore.test.ts), so the
  * measured time reflects pure JS computation: structure traversal, rank
  * shifting, state cloning, sorting, and Zustand state updates.
  *
- * Thresholds are deliberately loose — roughly 5-10× the time these operations
- * actually take — because they are a backstop against catastrophic regressions,
- * not a benchmark. The operations here are O(n) or O(n log n) over hundreds of
- * items; a genuine regression to O(n²) shows up as orders of magnitude, not as
- * a few milliseconds. Tight budgets bought no extra protection and instead
- * failed on nothing more than a GC pause or a slower runner.
+ * Milliseconds alone said too little: the same operation took 5-8× longer
+ * whenever the machine was busy, and the tests failed with nothing changed.
+ * So each operation is timed against a reference: a fixed piece of work like
+ * the store's own, timed just before it on the same machine. A busy or slower
+ * machine slows both, and the budgets are in multiples of the reference. The
+ * median of several runs counts, which leaves out a moment's hiccup either way.
  *
- * The precise guard against complexity regressions is the "algorithmic scaling"
- * block at the bottom, which compares timings at different input sizes and so
- * does not care how fast the machine is.
+ * Before each run, what the previous one started is let finish and the garbage
+ * is collected, so that one test's leftovers do not slow down the next.
  *
- * These budgets also assume the run has the CPU to itself; vitest.config.ts
- * sets fileParallelism: false for that reason.
+ * The budgets are loose, several times what the operations take, because they
+ * are a backstop against catastrophic regressions, not a benchmark. The precise
+ * guard against complexity regressions is the "algorithmic scaling" block at
+ * the bottom, which compares the same operation at sizes 4× apart and so does
+ * not care how fast the machine is.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { setFlagsFromString } from "node:v8";
+import { runInNewContext } from "node:vm";
 import {
   useAppStore,
   resetRankEchoSuppression,
@@ -84,14 +89,92 @@ vi.mock("@/store/backlogStatusesStore", async () => {
 
 const ORG = "perf-test";
 
-// ─── Timing helper ──────────────────────────────────────────────────────
+// ─── Timing ─────────────────────────────────────────────────────────────
 
-/** Run `fn()` and return elapsed wall-clock ms. */
-function measure(fn: () => void): number {
-  const t0 = performance.now();
-  fn();
-  return performance.now() - t0;
+/** How many times each operation is timed. */
+const RUNS = 5;
+
+/**
+ * Collects the garbage now. Node allows it only when started with
+ * --expose-gc, but the flag can also be set from here, without changing how
+ * the tests are run.
+ */
+setFlagsFromString("--expose-gc");
+const collectGarbage = runInNewContext("gc") as () => void;
+
+/**
+ * Lets what an operation started run to its end, as it would in a browser
+ * before the next click: the callbacks of its (mocked) saves. Until then they
+ * hold on to what they save, and timed back to back, 500 adds left over 100 MB
+ * that no collection could free.
+ */
+const settleStoreWork = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+/**
+ * The reference: a fixed piece of work like the store's own, sorting items by
+ * rank and looking each one up by id, over items built once beforehand. It
+ * allocates almost nothing, so it does not pay for collecting the garbage an
+ * operation timed just before it left behind.
+ */
+const REFERENCE_ITEMS = Array.from({ length: 4000 }, (_, i) => ({ id: `ref::wi-${i}`, rank: (i * 7919) % 4000 }));
+const REFERENCE_INDEX = new Map(REFERENCE_ITEMS.map((w) => [w.id, w]));
+let referenceSink = 0;
+
+function referenceWork() {
+  for (let pass = 0; pass < 3; pass++) {
+    const order = REFERENCE_ITEMS.slice().sort((a, b) => a.rank - b.rank);
+    for (const w of order) referenceSink += REFERENCE_INDEX.get(w.id)!.rank;
+  }
 }
+
+interface Timing {
+  /** The operation's best time. */
+  ms: number;
+  /** The reference's median time. */
+  referenceMs: number;
+  /** The operation's time in references: the median of the runs. */
+  references: number;
+}
+
+const median = (xs: number[]) => [...xs].sort((x, y) => x - y)[Math.floor(xs.length / 2)];
+
+/**
+ * Times `op` `runs` times, each run from a fresh `prepare()`, which is not
+ * timed, and each right after the reference. A run's time in references is
+ * from the same moment, so it does not matter that the machine is slower at
+ * one moment than at another: this one runs at a third of its speed after a few
+ * seconds at full load. The state the last run leaves is there to check
+ * afterwards.
+ */
+async function timeAgainstReference<T>(
+  prepare: () => T,
+  op: (prepared: T) => unknown,
+  runs = RUNS,
+): Promise<Timing> {
+  const opMs: number[] = [];
+  const referenceMs: number[] = [];
+  for (let i = 0; i < runs; i++) {
+    const prepared = prepare();
+    collectGarbage();
+    let t0 = performance.now();
+    referenceWork();
+    referenceMs.push(performance.now() - t0);
+    t0 = performance.now();
+    const result = op(prepared);
+    if (result instanceof Promise) await result;
+    opMs.push(performance.now() - t0);
+    await settleStoreWork();
+  }
+  return {
+    ms: Math.min(...opMs),
+    referenceMs: median(referenceMs),
+    references: median(opMs.map((ms, i) => ms / referenceMs[i])),
+  };
+}
+
+/** For a failure's message: what was measured. */
+const measured = (t: Timing) =>
+  `${t.ms.toFixed(1)} ms, ${t.references.toFixed(2)}× the reference's ${t.referenceMs.toFixed(1)} ms`;
 
 // ─── Seeding helpers ────────────────────────────────────────────────────
 
@@ -344,260 +427,211 @@ beforeEach(() => {
 
 // ─── TESTS ──────────────────────────────────────────────────────────────
 
-describe("performance: large dataset operations", () => {
-  // ── Bulk add ────────────────────────────────────────────────────────
+/** Set PERF_REPORT=1 to print each operation's timing, e.g. to revisit the budgets. */
+function report(name: string, t: Timing) {
+  if (process.env.PERF_REPORT) console.log(`PERF ${name}: ${measured(t)}`);
+}
 
-  it("adds 500 items within a CI-safe per-item budget", () => {
-    seedFlatItems(0); // just the structure, no items
-    const store = useAppStore.getState();
-    const elapsed = measure(() => {
-      for (let i = 0; i < 500; i++) {
-        store.addWorkItem(`Item ${i}`, null, `${ORG}::bl-1`, `${ORG}::bt-1`);
-      }
-    });
-    const perItem = elapsed / 500;
-    expect(perItem).toBeLessThan(8); // ms per item; ~1.3 ms observed
-    // Verify all items created
+/** 2 000 items in 50 lists across 5 trees, as the database would return them. */
+function largeLoad() {
+  const data = {
+    workItems: {} as Record<string, ReturnType<typeof mkWi> & { boardRanks: Record<string, number> }>,
+    backlogs: {} as Record<
+      string,
+      { id: string; name: string; parentId: string | null; childrenIds: string[]; treeId: string; rank: number }
+    >,
+    backlogTrees: {} as Record<string, { id: string; name: string; rootBacklogIds: string[]; rank: number }>,
+  };
+  for (let i = 0; i < 5; i++) {
+    const tId = `${ORG}::bt-${i}`;
+    data.backlogTrees[tId] = { id: tId, name: `Tree ${i}`, rootBacklogIds: [], rank: i };
+  }
+  for (let i = 0; i < 50; i++) {
+    const bId = `${ORG}::bl-${i}`;
+    const tId = `${ORG}::bt-${i % 5}`;
+    data.backlogs[bId] = { id: bId, name: `BL ${i}`, parentId: null, childrenIds: [], treeId: tId, rank: i };
+    data.backlogTrees[tId].rootBacklogIds.push(bId);
+  }
+  for (let i = 0; i < 2000; i++) {
+    const blIdx = i % 50;
+    const bId = `${ORG}::bl-${blIdx}`;
+    const wi = mkWi(i, "not_started", { backlogId: bId, treeId: `${ORG}::bt-${blIdx % 5}` });
+    data.workItems[wi.id] = { ...wi, boardRanks: { [bId]: i } };
+  }
+  return data;
+}
+
+/** An empty list in an empty tree. */
+function seedEmptyList() {
+  useAppStore.setState({
+    organizationId: ORG,
+    backlogTrees: {
+      [`${ORG}::bt-1`]: { id: `${ORG}::bt-1`, name: "Tree", rootBacklogIds: [`${ORG}::bl-1`], rank: 0 },
+    },
+    backlogs: {
+      [`${ORG}::bl-1`]: {
+        id: `${ORG}::bl-1`,
+        name: "BL",
+        parentId: null,
+        childrenIds: [] as string[],
+        treeId: `${ORG}::bt-1`,
+        rank: 0,
+      },
+    },
+    workItems: {},
+    undoStack: [],
+    redoStack: [],
+    isLoading: false,
+  });
+}
+
+const reorder = (id: string, to: number) =>
+  useAppStore.getState().reorderWorkItemAmongSiblings(`${ORG}::wi-${id}`, to, `${ORG}::bt-1`, [`${ORG}::bl-1`]);
+
+/** The runs for the two operations that take most of a second or more each. */
+const SLOW_RUNS = 3;
+
+/**
+ * Each test's time limit. The budgets, not vitest's 5 s limit, say what is too
+ * slow: with every core of the machine busy, a test here took up to 40 s.
+ */
+const TEST_TIMEOUT_MS = 180_000;
+
+/**
+ * Each operation's budget, in references: about 4× the most it took on a
+ * developer laptop, idle and with all 16 cores busy, which is noted beside it.
+ */
+const BUDGET = {
+  add500: 1000, // 170-262
+  reorderDown: 15, // 1.6-3.8
+  reorderUp: 10, // 1.4-2.1
+  promoteChain: 15, // 2.0-3.3
+  boardReorder: 4, // 0.46-0.92
+  undo10: 6, // 0.90-1.3
+  load2000: 35, // 3.6-8.7
+  insertAtTop500: 2000, // 300-510
+  duplicateTree: 2, // 0.16-0.34
+};
+
+describe("performance: large dataset operations", { timeout: TEST_TIMEOUT_MS }, () => {
+
+  it("adds 500 items", async () => {
+    const t = await timeAgainstReference(
+      () => seedFlatItems(0), // just the structure, no items
+      () => {
+        const store = useAppStore.getState();
+        for (let i = 0; i < 500; i++) store.addWorkItem(`Item ${i}`, null, `${ORG}::bl-1`, `${ORG}::bt-1`);
+      },
+      SLOW_RUNS,
+    );
+    report("add 500", t);
+    expect(t.references, measured(t)).toBeLessThan(BUDGET.add500);
     expect(Object.keys(useAppStore.getState().workItems)).toHaveLength(500);
   });
 
   // ── Large reorder ───────────────────────────────────────────────────
 
-  it("reorders an item from top to bottom in 1 000-item list within 100 ms", () => {
-    seedFlatItems(1000);
-    const elapsed = measure(() => {
-      useAppStore
-        .getState()
-        .reorderWorkItemAmongSiblings(
-          `${ORG}::wi-0`,
-          1000,
-          `${ORG}::bt-1`,
-          [`${ORG}::bl-1`],
-        );
-    });
-    expect(elapsed).toBeLessThan(100); // ~16 ms observed
+  it("reorders an item from top to bottom in a 1 000-item list", async () => {
+    const t = await timeAgainstReference(() => seedFlatItems(1000), () => reorder("0", 1000));
+    report("reorder top to bottom", t);
+    expect(t.references, measured(t)).toBeLessThan(BUDGET.reorderDown);
   });
 
-  it("reorders last item to first in 1 000-item list within 60 ms", () => {
-    seedFlatItems(1000);
-    const elapsed = measure(() => {
-      useAppStore
-        .getState()
-        .reorderWorkItemAmongSiblings(
-          `${ORG}::wi-999`,
-          0,
-          `${ORG}::bt-1`,
-          [`${ORG}::bl-1`],
-        );
-    });
-    expect(elapsed).toBeLessThan(60); // ~8 ms observed
+  it("reorders the last item to first in a 1 000-item list", async () => {
+    const t = await timeAgainstReference(() => seedFlatItems(1000), () => reorder("999", 0));
+    report("reorder bottom to top", t);
+    expect(t.references, measured(t)).toBeLessThan(BUDGET.reorderUp);
   });
 
   // ── Status change with auto-promotion ───────────────────────────────
 
-  it("promotes a 200-level deep chain within 40 ms", () => {
-    seedDeepChain(200);
-    const elapsed = measure(() => {
-      useAppStore
-        .getState()
-        .setWorkItemStatus(`${ORG}::wi-199`, "in_progress");
-    });
-    expect(elapsed).toBeLessThan(40); // ~4.5 ms observed
-    // Verify the root was promoted
-    expect(
-      useAppStore.getState().workItems[`${ORG}::wi-0`].status,
-    ).toBe("in_progress");
+  it("promotes a 200-level deep chain", async () => {
+    const t = await timeAgainstReference(
+      () => seedDeepChain(200),
+      () => useAppStore.getState().setWorkItemStatus(`${ORG}::wi-199`, "in_progress"),
+    );
+    report("promote 200-deep chain", t);
+    expect(t.references, measured(t)).toBeLessThan(BUDGET.promoteChain);
+    // The root was promoted
+    expect(useAppStore.getState().workItems[`${ORG}::wi-0`].status).toBe("in_progress");
   });
 
   // ── Board reorder at scale ──────────────────────────────────────────
 
-  it("reorders within a specific status column in 500 mixed-status items within 10 ms", () => {
-    seedMultiStatus(500);
-
+  it("reorders within a specific status column in 500 mixed-status items", async () => {
     // Move wi-5 (not_started) to index 0 of the not_started column
-    const elapsed = measure(() => {
-      useAppStore
-        .getState()
-        .reorderWorkItemInBoard(
-          `${ORG}::wi-5`,
-          0,
-          `${ORG}::bt-1`,
-          [`${ORG}::bl-1`],
-          "not_started",
-        );
-    });
-    expect(elapsed).toBeLessThan(10);
+    const t = await timeAgainstReference(
+      () => seedMultiStatus(500),
+      () =>
+        useAppStore
+          .getState()
+          .reorderWorkItemInBoard(`${ORG}::wi-5`, 0, `${ORG}::bt-1`, [`${ORG}::bl-1`], "not_started"),
+    );
+    report("board reorder", t);
+    expect(t.references, measured(t)).toBeLessThan(BUDGET.boardReorder);
 
     // Verify not_started column: wi-5 is now first
-    const notStartedItems = Object.values(
-      useAppStore.getState().workItems,
-    )
+    const notStartedItems = Object.values(useAppStore.getState().workItems)
       .filter((w) => w.status === "not_started")
-      .sort(
-        (a, b) =>
-          (a.boardRanks?.[`${ORG}::bl-1`] ?? 0) -
-          (b.boardRanks?.[`${ORG}::bl-1`] ?? 0),
-      );
+      .sort((a, b) => (a.boardRanks?.[`${ORG}::bl-1`] ?? 0) - (b.boardRanks?.[`${ORG}::bl-1`] ?? 0));
     expect(notStartedItems[0].title).toBe("Item 5");
   });
 
   // ── Bulk undo ───────────────────────────────────────────────────────
 
-  it("undoes 10 runBulk operations on a 500-item set within 30 ms", () => {
-    seedFlatItems(500);
-
-    // Perform 10 bulk ops
-    const store = useAppStore.getState();
-    for (let op = 0; op < 10; op++) {
-      store.runBulk(() => {
-        store.setWorkItemStatus(`${ORG}::wi-${op * 3}`, "done");
-        store.setWorkItemStatus(`${ORG}::wi-${op * 3 + 1}`, "in_progress");
-        store.setWorkItemStatus(`${ORG}::wi-${op * 3 + 2}`, "blocked");
-      });
-    }
-
-    // Undo all 10
-    const elapsed = measure(() => {
-      for (let i = 0; i < 10; i++) {
-        useAppStore.getState().undo();
-      }
-    });
-    const perUndo = elapsed / 10;
-    expect(perUndo).toBeLessThan(5); // ms per undo
+  it("undoes 10 runBulk operations on a 500-item set", async () => {
+    const t = await timeAgainstReference(
+      () => {
+        seedFlatItems(500);
+        const store = useAppStore.getState();
+        for (let op = 0; op < 10; op++) {
+          store.runBulk(() => {
+            store.setWorkItemStatus(`${ORG}::wi-${op * 3}`, "done");
+            store.setWorkItemStatus(`${ORG}::wi-${op * 3 + 1}`, "in_progress");
+            store.setWorkItemStatus(`${ORG}::wi-${op * 3 + 2}`, "blocked");
+          });
+        }
+      },
+      () => {
+        for (let i = 0; i < 10; i++) useAppStore.getState().undo();
+      },
+    );
+    report("undo 10 bulk", t);
+    expect(t.references, measured(t)).toBeLessThan(BUDGET.undo10);
 
     // All items should be back to not_started
-    const allNotStarted = Object.values(
-      useAppStore.getState().workItems,
-    ).every((w) => w.status === "not_started");
-    expect(allNotStarted).toBe(true);
+    expect(Object.values(useAppStore.getState().workItems).every((w) => w.status === "not_started")).toBe(true);
   });
 
   // ── Load from Supabase ──────────────────────────────────────────────
 
-  it("loads 2 000 items, 50 lists, and 5 trees within 100 ms", async () => {
-    const bigData = {
-      workItems: {} as Record<string, ReturnType<typeof mkWi>>,
-      backlogs: {} as Record<
-        string,
-        {
-          id: string;
-          name: string;
-          parentId: string | null;
-          childrenIds: string[];
-          treeId: string;
-          rank: number;
-        }
-      >,
-      backlogTrees: {} as Record<
-        string,
-        {
-          id: string;
-          name: string;
-          rootBacklogIds: string[];
-          rank: number;
-        }
-      >,
-    };
-
-    for (let i = 0; i < 5; i++) {
-      const tId = `${ORG}::bt-${i}`;
-      bigData.backlogTrees[tId] = {
-        id: tId,
-        name: `Tree ${i}`,
-        rootBacklogIds: [] as string[],
-        rank: i,
-      };
-    }
-
-    for (let i = 0; i < 50; i++) {
-      const bId = `${ORG}::bl-${i}`;
-      const tIdx = i % 5;
-      bigData.backlogs[bId] = {
-        id: bId,
-        name: `BL ${i}`,
-        parentId: null,
-        childrenIds: [],
-        treeId: `${ORG}::bt-${tIdx}`,
-        rank: i,
-      };
-      bigData.backlogTrees[`${ORG}::bt-${tIdx}`].rootBacklogIds.push(bId);
-    }
-
-    for (let i = 0; i < 2000; i++) {
-      const blIdx = i % 50;
-      const tIdx = blIdx % 5;
-      const bId = `${ORG}::bl-${blIdx}`;
-      const tId = `${ORG}::bt-${tIdx}`;
-      bigData.workItems[`${ORG}::wi-${i}`] = mkWi(i, "not_started", {
-        backlogId: bId,
-        treeId: tId,
-      });
-      (bigData.workItems[`${ORG}::wi-${i}`] as any).boardRanks = {
-        [bId]: i,
-      };
-    }
-
-    vi.mocked(loadDataFromSupabase).mockResolvedValueOnce(bigData as any);
-    useAppStore.setState({ organizationId: ORG, isLoading: false });
-
-    let elapsed = 0;
-    elapsed = await new Promise<number>((resolve) => {
-      const t0 = performance.now();
-      useAppStore.getState().loadFromSupabase().then(() => {
-        resolve(performance.now() - t0);
-      });
-    });
-
-    expect(elapsed).toBeLessThan(100);
-    expect(
-      Object.keys(useAppStore.getState().workItems),
-    ).toHaveLength(2000);
+  it("loads 2 000 items, 50 lists, and 5 trees", async () => {
+    const t = await timeAgainstReference(
+      () => {
+        vi.mocked(loadDataFromSupabase).mockResolvedValueOnce(largeLoad() as never);
+        useAppStore.setState({ organizationId: ORG, isLoading: false, workItems: {}, backlogs: {}, backlogTrees: {} });
+      },
+      () => useAppStore.getState().loadFromSupabase(),
+    );
+    report("load 2 000", t);
+    expect(t.references, measured(t)).toBeLessThan(BUDGET.load2000);
+    expect(Object.keys(useAppStore.getState().workItems)).toHaveLength(2000);
   });
 
   // ── Rank normalization ──────────────────────────────────────────────
 
-  it("normalizes ranks after inserting 500 items at the top within a CI-safe budget", () => {
+  it("normalizes ranks after inserting 500 items at the top", async () => {
     // Insert items one by one at rank 0 — this forces rank shifting + eventual normalization
-    useAppStore.setState({
-      organizationId: ORG,
-      backlogTrees: {
-        [`${ORG}::bt-1`]: {
-          id: `${ORG}::bt-1`,
-          name: "Tree",
-          rootBacklogIds: [`${ORG}::bl-1`],
-          rank: 0,
-        },
+    const t = await timeAgainstReference(
+      seedEmptyList,
+      () => {
+        const store = useAppStore.getState();
+        for (let i = 0; i < 500; i++) store.addWorkItem(`Item ${i}`, null, `${ORG}::bl-1`, `${ORG}::bt-1`, 0);
       },
-      backlogs: {
-        [`${ORG}::bl-1`]: {
-          id: `${ORG}::bl-1`,
-          name: "BL",
-          parentId: null,
-          childrenIds: [] as string[],
-          treeId: `${ORG}::bt-1`,
-          rank: 0,
-        },
-      },
-      workItems: {},
-      undoStack: [],
-      redoStack: [],
-      isLoading: false,
-    });
-
-    const store = useAppStore.getState();
-    const elapsed = measure(() => {
-      for (let i = 0; i < 500; i++) {
-        store.addWorkItem(
-          `Item ${i}`,
-          null,
-          `${ORG}::bl-1`,
-          `${ORG}::bt-1`,
-          0,
-        ); // always at top
-      }
-    });
-
-    expect(elapsed).toBeLessThan(4000); // ~620 ms observed
+      SLOW_RUNS,
+    );
+    report("insert 500 at top", t);
+    expect(t.references, measured(t)).toBeLessThan(BUDGET.insertAtTop500);
 
     // All ranks should be consecutive integers 0..499
     const ranks = Object.values(useAppStore.getState().workItems)
@@ -608,78 +642,61 @@ describe("performance: large dataset operations", () => {
 
   // ── Duplicate deep tree ─────────────────────────────────────────────
 
-  it("duplicates a seeded nested tree within 20 ms", () => {
-    seedNestedTree(3, 17); // ~17 leaves × 3 levels
-    const initialCount = Object.keys(useAppStore.getState().workItems).length;
-
-    const rootId = Object.values(useAppStore.getState().workItems).find(
-      (w) => w.parentId === null,
-    )?.id;
-    expect(rootId).toBeDefined();
-
-    const elapsed = measure(() => {
-      useAppStore.getState().duplicateWorkItems([rootId!]);
-    });
-
-    expect(elapsed).toBeLessThan(20);
+  it("duplicates a seeded nested tree", async () => {
+    let initialCount = 0;
+    const t = await timeAgainstReference(
+      () => {
+        seedNestedTree(3, 17); // ~17 leaves × 3 levels
+        initialCount = Object.keys(useAppStore.getState().workItems).length;
+        const rootId = Object.values(useAppStore.getState().workItems).find((w) => w.parentId === null)?.id;
+        expect(rootId).toBeDefined();
+        return rootId!;
+      },
+      (rootId) => useAppStore.getState().duplicateWorkItems([rootId]),
+    );
+    report("duplicate tree", t);
+    expect(t.references, measured(t)).toBeLessThan(BUDGET.duplicateTree);
 
     // The duplicate should add another copy of the selected subtree.
-    const count = Object.keys(useAppStore.getState().workItems).length;
-    expect(count).toBeGreaterThan(initialCount);
+    expect(Object.keys(useAppStore.getState().workItems).length).toBeGreaterThan(initialCount);
   });
 });
 
 // ─── SCALING: quadratic / N² detection ─────────────────────────────────
 
-describe("performance: algorithmic scaling", () => {
-  it("reorder time scales roughly linearly with item count", () => {
-    const times: Array<{ n: number; ms: number }> = [];
-    for (const n of [100, 300, 500]) {
-      seedFlatItems(n);
-      const ms = measure(() => {
-        useAppStore
-          .getState()
-          .reorderWorkItemAmongSiblings(
-            `${ORG}::wi-0`,
-            n,
-            `${ORG}::bt-1`,
-            [`${ORG}::bl-1`],
-          );
-      });
-      times.push({ n, ms });
-    }
+/**
+ * The same operation at a size and at 4× that size, each in references, so
+ * that the machine slowing down between the two does not count as growth.
+ * Linear growth takes at most about 4× as long (2.3-3.8× measured, as each
+ * operation also has a part that does not grow); quadratic growth takes up to
+ * 16×. A lookup over every item for each item, planted in reordering, measured
+ * 10×. A limit of 8 tells them apart with twice the room linear growth needs.
+ */
+const SCALING_LIMIT = 8;
 
-    // If time scales worse than O(n log n), the ratio ms₂/ms₃ should
-    // stay reasonable.  For 300 vs 100 we expect at most ~5× (accounting
-    // for JS engine warm-up noise at the small end), and 500 vs 300 at
-    // most ~3×.
-    if (times.length >= 3) {
-      const ratio1 = times[1].ms / Math.max(times[0].ms, 1);
-      const ratio2 = times[2].ms / Math.max(times[1].ms, 1);
-      // Allow generous headroom — a true O(n²) regression would produce
-      // ratios of ~9 (300²/100²) and ~2.8 (500²/300²) or worse.
-      expect(ratio1).toBeLessThan(8);
-      expect(ratio2).toBeLessThan(5);
-    }
+async function growth(seed: (n: number) => void, op: (n: number) => void, n: number) {
+  const small = await timeAgainstReference(() => seed(n), () => op(n));
+  const large = await timeAgainstReference(() => seed(4 * n), () => op(4 * n));
+  return { small, large, ratio: large.references / small.references };
+}
+
+const grew = (g: Awaited<ReturnType<typeof growth>>) =>
+  `${g.small.references.toFixed(2)} → ${g.large.references.toFixed(2)} references: ${g.ratio.toFixed(1)}×`;
+
+describe("performance: algorithmic scaling", { timeout: TEST_TIMEOUT_MS }, () => {
+  it("reorder time grows about linearly with the number of items", async () => {
+    const g = await growth(seedFlatItems, (n) => reorder("0", n), 300);
+    if (process.env.PERF_REPORT) console.log(`PERF reorder growth: ${grew(g)}`);
+    expect(g.ratio, grew(g)).toBeLessThan(SCALING_LIMIT);
   });
 
-  it("status-change promotion time scales roughly linearly with chain depth", () => {
-    const times: Array<{ depth: number; ms: number }> = [];
-    for (const depth of [50, 100, 200]) {
-      seedDeepChain(depth);
-      const ms = measure(() => {
-        useAppStore
-          .getState()
-          .setWorkItemStatus(`${ORG}::wi-${depth - 1}`, "done");
-      });
-      times.push({ depth, ms });
-    }
-
-    if (times.length >= 3) {
-      const ratio1 = times[1].ms / Math.max(times[0].ms, 1);
-      const ratio2 = times[2].ms / Math.max(times[1].ms, 1);
-      expect(ratio1).toBeLessThan(6);
-      expect(ratio2).toBeLessThan(6);
-    }
+  it("status-change promotion time grows about linearly with chain depth", async () => {
+    const g = await growth(
+      seedDeepChain,
+      (depth) => useAppStore.getState().setWorkItemStatus(`${ORG}::wi-${depth - 1}`, "done"),
+      60,
+    );
+    if (process.env.PERF_REPORT) console.log(`PERF promotion growth: ${grew(g)}`);
+    expect(g.ratio, grew(g)).toBeLessThan(SCALING_LIMIT);
   });
 });
