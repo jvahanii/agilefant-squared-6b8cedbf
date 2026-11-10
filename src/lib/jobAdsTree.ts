@@ -1,4 +1,5 @@
 import type { WorkItem } from "@/types/models";
+import { itemFieldsChanged } from "./itemFieldsChanged";
 
 /**
  * The job hunt's own backlog tree — "Työpaikkalistaukset" — held by id rather
@@ -17,4 +18,18 @@ export function countItemsInTree(
   treeId: string,
 ): number {
   return Object.values(workItems ?? {}).filter((item) => !!item.backlogAssignments?.[treeId]).length;
+}
+
+/**
+ * The count of the job hunt's tree in these items, counted again only when an
+ * item has come or gone or moved between trees. The header's button reads it on
+ * every change to the items; counted over every item each time, it took a few
+ * milliseconds of every edit, in every organization.
+ */
+let counted: { items: Record<string, WorkItem>; count: number } | null = null;
+export function jobAdCount(items: Record<string, WorkItem>): number {
+  if (!counted || itemFieldsChanged(counted.items, items, ["backlogAssignments"])) {
+    counted = { items, count: countItemsInTree(items, JOB_ADS_TREE_ID) };
+  } else counted.items = items;
+  return counted.count;
 }

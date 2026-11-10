@@ -17,6 +17,10 @@ import { useAppStore } from '@/store/appStore';
 import { useTimeEntryStore, type TimeEntry } from '@/store/timeEntryStore';
 import type { Backlog, WorkItem } from '@/types/models';
 import { computeTimeTotals } from './timeTotalsCore';
+import { itemFieldsChanged } from './itemFieldsChanged';
+
+/** All that the totals depend on of the items: where each is, and under what. */
+const TIME_FIELDS = ['backlogAssignments', 'childrenIds'] as const;
 
 type TotalsCache = {
   wi: Map<string, number>;
@@ -37,9 +41,11 @@ function ensureCache(): TotalsCache {
   if (
     cache &&
     entries === lastEntries &&
-    workItems === lastWorkItems &&
-    backlogs === lastBacklogs
+    backlogs === lastBacklogs &&
+    lastWorkItems &&
+    !itemFieldsChanged(lastWorkItems, workItems, TIME_FIELDS)
   ) {
+    lastWorkItems = workItems;
     return cache;
   }
   lastEntries = entries;

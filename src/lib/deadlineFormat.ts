@@ -21,7 +21,22 @@ export function formatDeadline(iso: string, now: Date = new Date(), locale?: str
   const d = asDate(iso);
   if (!d) return iso;
   const sameYear = d.getFullYear() === now.getFullYear();
-  return d.toLocaleDateString(locale, sameYear ? { day: "numeric", month: "numeric" } : undefined);
+  return dateFormat(locale, sameYear).format(d);
+}
+
+/**
+ * The formats, made once each: toLocaleDateString made one on every call,
+ * which with a deadline on every row was most of the time a row took to draw.
+ */
+const dateFormats = new Map<string, Intl.DateTimeFormat>();
+function dateFormat(locale: string | undefined, dayAndMonthOnly: boolean): Intl.DateTimeFormat {
+  const key = `${locale ?? ""}|${dayAndMonthOnly}`;
+  let format = dateFormats.get(key);
+  if (!format) {
+    format = new Intl.DateTimeFormat(locale, dayAndMonthOnly ? { day: "numeric", month: "numeric" } : undefined);
+    dateFormats.set(key, format);
+  }
+  return format;
 }
 
 /**

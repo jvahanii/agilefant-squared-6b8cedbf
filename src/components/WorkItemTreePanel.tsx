@@ -392,6 +392,11 @@ export function WorkItemTreePanel() {
   // Assign a 1-based running number to each item that will actually be rendered
   // (i.e. not snoozed and not hidden by the label filter).  The numbers are
   // contiguous with no gaps, matching the visual top-to-bottom order.
+  //
+  // Every row reads these, so the map stays the same object while the numbers
+  // stay the same: a new one after each change to an item, such as a rename,
+  // drew every row again.
+  const lastRunningNumbers = useRef<Map<string, number>>(new Map());
   const runningNumbers = useMemo(() => {
     const map = new Map<string, number>();
     let counter = 1;
@@ -407,15 +412,22 @@ export function WorkItemTreePanel() {
       }
     };
     displayedRootItems.forEach((root) => traverse(root.id));
+    const before = lastRunningNumbers.current;
+    if (before.size === map.size && [...map].every(([id, n]) => before.get(id) === n)) return before;
+    lastRunningNumbers.current = map;
     return map;
   }, [displayedRootItems, expandedWorkItems, workItems, selectedTreeId, backlogIdSet, snoozedItemIds, visibleFilterSet]);
 
+  // The same function for as long as the panel is there: every row is handed
+  // it, and a new one with each new list of rows (which any change to an item
+  // makes) drew every row again. The rows are read when it is called.
   const handleSelect = useCallback(
     (id: string, multi: boolean, shift: boolean) => {
-      if (shift && lastSelectedId.current && visibleItemIds.includes(lastSelectedId.current)) {
-        const startIdx = visibleItemIds.indexOf(lastSelectedId.current);
-        const endIdx = visibleItemIds.indexOf(id);
-        const rangeIds = visibleItemIds.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1);
+      const ids = visibleItemIdsRef.current;
+      if (shift && lastSelectedId.current && ids.includes(lastSelectedId.current)) {
+        const startIdx = ids.indexOf(lastSelectedId.current);
+        const endIdx = ids.indexOf(id);
+        const rangeIds = ids.slice(Math.min(startIdx, endIdx), Math.max(startIdx, endIdx) + 1);
 
         useAppStore.getState().selectWorkItemRange(rangeIds, multi);
       } else {
@@ -423,7 +435,7 @@ export function WorkItemTreePanel() {
         lastSelectedId.current = id;
       }
     },
-    [visibleItemIds, selectWorkItem],
+    [selectWorkItem],
   );
 
   /**

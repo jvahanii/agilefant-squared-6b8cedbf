@@ -92,6 +92,15 @@ const TimesheetBrowserDialog = lazy(() =>
   import("@/components/TimesheetBrowserDialog").then((m) => ({ default: m.TimesheetBrowserDialog })),
 );
 
+// What starts a drag: a clear ~8 px gesture with the mouse, so that a click or
+// a text selection does not, and a press held 200 ms on touch.
+//
+// Made once, here: given as new objects each time the layout drew, which any
+// change to an item makes it do, they made the drag sensors new too, and with
+// them every row's drag listeners, so every row in the list drew again.
+const MOUSE_SENSOR_OPTIONS = { activationConstraint: { distance: 8 } };
+const TOUCH_SENSOR_OPTIONS = { activationConstraint: { delay: 200, tolerance: 8 } };
+
 export default function AppLayout() {
   return (
     <ScrambleProvider>
@@ -148,10 +157,8 @@ function AppLayoutInner() {
   }, [activeDrag]);
 
   const sensors = useSensors(
-    // Larger activation distance avoids accidentally starting a drag during
-    // a click/text-selection — desktop drag now needs a clear ~8px gesture.
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(MouseSensor, MOUSE_SENSOR_OPTIONS),
+    useSensor(TouchSensor, TOUCH_SENSOR_OPTIONS),
   );
 
   // Custom collision detection: prefer pointer-within (exact pointer position) over rect

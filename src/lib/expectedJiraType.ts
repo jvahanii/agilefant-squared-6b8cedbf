@@ -1,6 +1,7 @@
 import { useAppStore } from "@/store/appStore";
 import { useJiraIssuesStore, type JiraIssueRef, type JiraListRef } from "@/store/jiraIssuesStore";
 import type { WorkItem } from "@/types/models";
+import { itemFieldsChanged } from "./itemFieldsChanged";
 import { expectedLayout, Levels } from "../../supabase/functions/_shared/jiraMapping";
 
 /**
@@ -36,7 +37,7 @@ export function expectedJiraTypes(
     // and the types with it. Checking that is a fraction of a millisecond;
     // working the types out again took some 40 ms, on every edit and every
     // change arriving from elsewhere.
-    if (sameShape(cache.workItems, workItems)) {
+    if (!itemFieldsChanged(cache.workItems, workItems, SHAPE_FIELDS)) {
       cache.workItems = workItems;
       return cache.result;
     }
@@ -92,28 +93,7 @@ export function expectedJiraTypes(
 }
 
 /** The same items, each in the same lists under the same parents: all the types depend on. */
-function sameShape(before: Record<string, WorkItem>, after: Record<string, WorkItem>): boolean {
-  const ids = Object.keys(after);
-  // As many items as before, every one of them there before: none removed either.
-  if (ids.length !== Object.keys(before).length) return false;
-  for (const id of ids) {
-    const a = after[id];
-    const b = before[id];
-    if (a === b) continue;
-    if (!b) return false;
-    if (a.parentId !== b.parentId) return false;
-    if (!sameEntries(a.parentIds, b.parentIds) || !sameEntries(a.backlogAssignments, b.backlogAssignments)) return false;
-  }
-  return true;
-}
-
-function sameEntries(a: Record<string, unknown> | undefined | null, b: Record<string, unknown> | undefined | null): boolean {
-  if (a === b) return true;
-  const keysA = a ? Object.keys(a) : [];
-  const keysB = b ? Object.keys(b) : [];
-  if (keysA.length !== keysB.length) return false;
-  return keysA.every((key) => a![key] === b?.[key]);
-}
+const SHAPE_FIELDS = ["parentId", "parentIds", "backlogAssignments"] as const;
 
 // Worked out once per change and shared by every row's tag.
 let cache: {

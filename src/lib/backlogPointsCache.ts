@@ -15,6 +15,7 @@ import { useCallback, useSyncExternalStore } from "react";
 import { useAppStore } from "@/store/appStore";
 import type { Backlog, WorkItem } from "@/types/models";
 import { allBacklogPoints, type BacklogPoints } from "./backlogPoints";
+import { itemFieldsChanged } from "./itemFieldsChanged";
 
 let lastItems: Record<string, WorkItem> | null = null;
 let lastBacklogs: Record<string, Backlog> | null = null;
@@ -23,9 +24,15 @@ let cache = new Map<string, BacklogPoints>();
 const same = (a: BacklogPoints, b: BacklogPoints) =>
   a.own === b.own && a.itemsTotal === b.itemsTotal && a.contents === b.contents && a.effective === b.effective;
 
+/** All that an item's points depend on. */
+const POINTS_FIELDS = ["points", "parentId", "parentIds", "childrenIds", "backlogAssignments"] as const;
+
 function ensureCache(): Map<string, BacklogPoints> {
   const { workItems, backlogs } = useAppStore.getState();
-  if (workItems === lastItems && backlogs === lastBacklogs) return cache;
+  if (backlogs === lastBacklogs && lastItems && !itemFieldsChanged(lastItems, workItems, POINTS_FIELDS)) {
+    lastItems = workItems;
+    return cache;
+  }
   const next = allBacklogPoints(workItems, backlogs);
   // Unchanged values keep the object a row already has, so it does not redraw.
   for (const [id, points] of next) {

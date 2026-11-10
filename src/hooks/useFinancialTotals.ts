@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import type { Backlog, WorkItem } from "@/types/models";
 import { useAppStore } from "@/store/appStore";
 import { useFinancialsStore, effectiveSum } from "@/store/financialsStore";
 import { useDisplayCurrencyStore } from "@/store/displayCurrencyStore";
 import { useRatesStore, convertCurrency } from "@/store/ratesStore";
+import { itemFieldsChanged } from "@/lib/itemFieldsChanged";
 
 interface FinancialTotals {
   savings: number;
@@ -37,21 +38,35 @@ function rollup(
   return { savings, income, currency: displayCurrency, hasData };
 }
 
-/** Sum of financial entries for a work item and all its descendants. */
+/**
+ * Sum of financial entries for a work item and all its descendants.
+ *
+ * Every row of the list reads this. It used to subscribe to the whole map of
+ * items, so a change to any item, a rename say, drew every row again. It now
+ * answers the same object while the sums stay the same, and a row draws again
+ * only when its own sums change.
+ */
 export function useWorkItemFinancialTotals(workItemId: string): FinancialTotals {
-  const workItems = useAppStore((s) => s.workItems);
   const byWorkItem = useFinancialsStore((s) => s.byWorkItem);
   const displayCurrency = useDisplayCurrencyStore((s) => s.displayCurrency);
   const rates = useRatesStore((s) => s.rates);
-  return useMemo(() => {
-    const ids: string[] = [];
-    const collect = (id: string) => {
-      ids.push(id);
-      workItems[id]?.childrenIds.forEach(collect);
-    };
-    collect(workItemId);
-    return rollup(ids, byWorkItem, displayCurrency, rates);
-  }, [workItemId, workItems, byWorkItem, displayCurrency, rates]);
+  const last = useRef<FinancialTotals | null>(null);
+  const select = useCallback(
+    (s: { workItems: Record<string, WorkItem> }) => {
+      const ids: string[] = [];
+      const collect = (id: string) => {
+        ids.push(id);
+        s.workItems[id]?.childrenIds.forEach(collect);
+      };
+      collect(workItemId);
+      const next = rollup(ids, byWorkItem, displayCurrency, rates);
+      if (last.current && sameTotals(last.current, next)) return last.current;
+      last.current = next;
+      return next;
+    },
+    [workItemId, byWorkItem, displayCurrency, rates],
+  );
+  return useAppStore(select);
 }
 
 /**
@@ -99,7 +114,11 @@ function ensureFinancials() {
     useDisplayCurrencyStore.getState().displayCurrency,
     useRatesStore.getState().rates,
   ];
-  if (lastKey && key.every((part, i) => part === lastKey![i])) return;
+  if (lastKey && key.every((part, i) => (i === 0 ? !itemFieldsChanged(lastKey![0], workItems, ["backlogAssignments"]) : part === lastKey![i]))) {
+    // All the sums read of the items is which there are and where each is.
+    lastKey = key;
+    return;
+  }
   const [, , byWorkItem, displayCurrency, rates] = key;
 
   // The backlogs whose subtree holds each backlog, down childrenIds.

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { BriefcaseBusiness } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { scrollListWithArrows } from "@/lib/scrollListWithArrows";
-import { JOB_ADS_TREE_ID, countItemsInTree } from "@/lib/jobAdsTree";
+import { jobAdCount as jobAdCountOf } from "@/lib/jobAdsTree";
 import { useAppStore } from "@/store/appStore";
 import { callGmail, type RunnableSearch } from "@/lib/gmailConnector";
 
@@ -35,8 +35,7 @@ export function JobSearchRunButton() {
   const { isSuperuser } = useScramble();
   const roleOverride = useOrgStore((s) => s.roleOverride);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
-  const workItems = useAppStore((s) => s.workItems);
-  const jobAdCount = useMemo(() => countItemsInTree(workItems, JOB_ADS_TREE_ID), [workItems]);
+  const jobAdCount = useAppStore((s) => jobAdCountOf(s.workItems));
   const [searches, setSearches] = useState<JobSearch[]>([]);
   const [running, setRunning] = useState<JobSearch | null>(null);
   const [runToken, setRunToken] = useState(0);
