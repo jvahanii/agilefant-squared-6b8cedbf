@@ -22,7 +22,7 @@ import { formatDuration } from "./TimeLogDialog";
 import { LabelPicker } from "./LabelPicker";
 import { Switch } from "@/components/ui/switch";
 import { IconizedTitle } from "@/components/IconizedTitle";
-import { Bell, BellOff, Clock, Copy, FolderInput, GitBranch, Globe, Link2, Lock, RotateCcw, Tag } from "lucide-react";
+import { Bell, BellOff, Clock, Copy, FolderInput, GitBranch, Globe, Link2, Lock, Minus, Plus, RotateCcw, Tag } from "lucide-react";
 import { useSnoozeStore } from "@/store/snoozeStore";
 import { Button } from "@/components/ui/button";
 import { useScrambledItemsStore } from "@/store/scrambledItemsStore";
@@ -202,13 +202,39 @@ export function MobileWorkItemAttributesSheet({
                   onBlur={commitPoints}
                 />
               ) : (
-                <button
-                  className={`text-sm tabular-nums px-2 py-0.5 rounded hover:bg-accent transition-colors ${isRolledUp ? "text-primary font-medium" : "text-muted-foreground"}`}
-                  onClick={startEditingPoints}
-                  title={isRolledUp ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}` : "Tap to edit"}
-                >
-                  {totalPoints > 0 ? totalPoints : "—"}
-                </button>
+                // − and + change the item's own points by one; taking the last
+                // one away leaves it without points, as typing 0 does.
+                <span className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    aria-label="Decrease story points"
+                    disabled={(item.points ?? 0) <= 0}
+                    onClick={() => {
+                      const own = item.points ?? 0;
+                      setWorkItemPoints(workItemId, own > 1 ? own - 1 : undefined);
+                    }}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <button
+                    className={`min-w-[2.5rem] text-sm tabular-nums px-2 py-0.5 rounded hover:bg-accent transition-colors ${isRolledUp ? "text-primary font-medium" : "text-muted-foreground"}`}
+                    onClick={startEditingPoints}
+                    title={isRolledUp ? `Own: ${item.points ?? 0}, Rolled-up: ${directChildrenSum}` : "Tap to edit"}
+                  >
+                    {totalPoints > 0 ? totalPoints : "—"}
+                  </button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    aria-label="Increase story points"
+                    onClick={() => setWorkItemPoints(workItemId, (item.points ?? 0) + 1)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </span>
               )}
             </div>
           )}

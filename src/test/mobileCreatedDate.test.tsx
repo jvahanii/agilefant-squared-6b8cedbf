@@ -120,6 +120,43 @@ describe("the deadline on the phone's attributes sheet", () => {
   });
 });
 
+describe("the story points on the phone's attributes sheet", () => {
+  const withPoints = (points: number | undefined) => {
+    setUp(true, true);
+    useOrgSettingsStore.setState((s) => ({
+      settings: { ...s.settings, [ORG]: { ...(s.settings[ORG] ?? ({} as never)), pointsEnabled: true } },
+    }));
+    useAppStore.setState((s) => ({ workItems: { ...s.workItems, [ID]: { ...s.workItems[ID], points } } }));
+    openSheet();
+  };
+  const points = () => useAppStore.getState().workItems[ID].points;
+  const plus = () => fireEvent.click(screen.getByRole("button", { name: "Increase story points" }));
+  const minus = () => fireEvent.click(screen.getByRole("button", { name: "Decrease story points" }));
+
+  it("goes up and down by one with + and −", () => {
+    withPoints(3);
+    plus();
+    plus();
+    expect(points()).toBe(5);
+    minus();
+    expect(points()).toBe(4);
+    expect(screen.getByTitle("Tap to edit")).toHaveTextContent("4");
+  });
+
+  it("starts from none with +", () => {
+    withPoints(undefined);
+    plus();
+    expect(points()).toBe(1);
+  });
+
+  it("is left without points when − takes the last one, and − is then off", () => {
+    withPoints(1);
+    minus();
+    expect(points()).toBeUndefined();
+    expect(screen.getByRole("button", { name: "Decrease story points" })).toBeDisabled();
+  });
+});
+
 describe("the created dates switch in the list attributes sheet", () => {
   const openBacklogSheet = () => {
     const noop = vi.fn();
