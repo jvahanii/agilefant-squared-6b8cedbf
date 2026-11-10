@@ -117,47 +117,30 @@ export default function ManagerScreen() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [orgsRes, usersRes, teamsRes, membershipsRes] = await Promise.all([
-        supabase.from("organizations").select("id, name, slug, created_at").order("created_at"),
-        // Aggregated server-side: counting time entries in the browser would
-        // mean fetching every row just to take its length.
+      // Counts are aggregated server-side. The organizations' change logs were
+      // counted one request each: with 70 organizations, 70 requests more, each
+      // checking access on every row it counted, before anything showed.
+      const [orgsRes, usersRes, teamsRes] = await Promise.all([
+        supabase.rpc("superuser_org_overview"),
         supabase.rpc("superuser_user_overview"),
         supabase.from("teams").select("id, name, organization_id, created_at").order("name"),
-        supabase.from("memberships").select("organization_id"),
       ]);
 
       if (orgsRes.error) throw orgsRes.error;
       if (usersRes.error) throw usersRes.error;
       if (teamsRes.error) throw teamsRes.error;
 
-      // Count members per org
-      const memberCounts: Record<string, number> = {};
-      for (const m of membershipsRes.data ?? []) {
-        memberCounts[m.organization_id] = (memberCounts[m.organization_id] ?? 0) + 1;
-      }
-
+      const orgList = orgsRes.data ?? [];
       const orgMap: Record<string, string> = {};
-      for (const o of orgsRes.data ?? []) {
+      for (const o of orgList) {
         orgMap[o.id] = o.name;
       }
 
-      const orgList = orgsRes.data ?? [];
-      const actionCounts: Record<string, number> = {};
-      await Promise.all(
-        orgList.map(async (o) => {
-          const { count } = await (supabase as any)
-            .from("change_log")
-            .select("*", { count: "exact", head: true })
-            .eq("organization_id", o.id);
-          actionCounts[o.id] = count ?? 0;
-        }),
-      );
-
       setOrgs(
-        orgList.map((o) => ({
+        orgList.map(({ member_count, action_count, ...o }) => ({
           ...o,
-          memberCount: memberCounts[o.id] ?? 0,
-          actionCount: actionCounts[o.id] ?? 0,
+          memberCount: Number(member_count),
+          actionCount: Number(action_count),
         })),
       );
       setUsers(usersRes.data ?? []);

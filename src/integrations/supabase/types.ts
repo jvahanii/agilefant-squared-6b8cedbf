@@ -2300,6 +2300,17 @@ export type Database = {
         Args: { _backlog_id: string; _on: boolean; _tree_id: string }
         Returns: boolean
       }
+      superuser_org_overview: {
+        Args: never
+        Returns: {
+          action_count: number
+          created_at: string
+          id: string
+          member_count: number
+          name: string
+          slug: string
+        }[]
+      }
       superuser_user_overview: {
         Args: never
         Returns: {
