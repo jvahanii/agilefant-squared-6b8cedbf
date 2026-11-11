@@ -435,3 +435,64 @@ describe("dropping on AppLayout", () => {
     expect({ afterDrop, afterAnswer: snapshot() }).toMatchSnapshot();
   });
 });
+
+// Dropped under an item, the items used to disappear into its closed branch,
+// and stayed unselected when the drag had not started from the selection.
+describe("dropping items onto an item", () => {
+  async function drop(active: Data, over: Data) {
+    render(<AppLayout />);
+    await act(async () => {
+      dnd.onDragEnd!({
+        active: { id: "dragged", data: { current: active } },
+        over: { id: "target", data: { current: over } },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+        activatorEvent: null,
+      });
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    return useAppStore.getState();
+  }
+
+  it("opens the new parent and selects the moved items", async () => {
+    seed(["B", "E"]);
+    const s = await drop(workitem("B", ["B", "E"]), { type: "workitem-parent", workItemId: "C", treeId: T1, backlogId: L1 });
+    expect(s.workItems.C.childrenIds).toEqual(expect.arrayContaining(["B", "E"]));
+    expect([...s.expandedWorkItems]).toEqual(["C"]);
+    expect(s.selectedWorkItemIds).toEqual(["B", "E"]);
+  });
+
+  it("selects the moved items when something else was selected", async () => {
+    seed(["A"]);
+    const s = await drop(workitem("B", ["B"]), { type: "workitem-parent", workItemId: "C", treeId: T1, backlogId: L1 });
+    expect(s.selectedWorkItemIds).toEqual(["B"]);
+    expect(s.expandedWorkItems.has("C")).toBe(true);
+  });
+
+  it("leaves the target out of the selection when it was dragged too", async () => {
+    seed(["B", "C"]);
+    const s = await drop(workitem("B", ["B", "C"]), { type: "workitem-parent", workItemId: "C", treeId: T1, backlogId: L1 });
+    expect(s.selectedWorkItemIds).toEqual(["B"]);
+  });
+
+  it("opens every item above the new parent", async () => {
+    seed(["B"]);
+    const s = await drop(workitem("B", ["B"]), { type: "workitem-parent", workItemId: "A1", treeId: T1, backlogId: L1 });
+    expect(s.workItems.A1.childrenIds).toEqual(["B"]);
+    expect(new Set(s.expandedWorkItems)).toEqual(new Set(["A1", "A"]));
+  });
+
+  it("keeps the branches already open", async () => {
+    seed(["B"]);
+    useAppStore.setState({ expandedWorkItems: new Set(["A"]) } as never);
+    const s = await drop(workitem("B", ["B"]), { type: "workitem-parent", workItemId: "C", treeId: T1, backlogId: L1 });
+    expect(new Set(s.expandedWorkItems)).toEqual(new Set(["A", "C"]));
+  });
+
+  it("changes nothing when dropped onto itself", async () => {
+    seed(["C"]);
+    const s = await drop(workitem("C", ["C"]), { type: "workitem-parent", workItemId: "C", treeId: T1, backlogId: L1 });
+    expect(s.expandedWorkItems.size).toBe(0);
+    expect(s.selectedWorkItemIds).toEqual(["C"]);
+  });
+});

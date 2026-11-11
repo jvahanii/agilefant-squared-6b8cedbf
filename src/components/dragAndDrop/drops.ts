@@ -128,12 +128,34 @@ function toList({ dragged, target, draggedIds, askCrossTree }: Drop) {
   });
 }
 
-/** Onto an item: become its children. The item itself, if among the dragged, stays put. */
+/**
+ * Onto an item: become its children. The item itself, if among the dragged,
+ * stays put. The new parent opens, and the moved items end up selected — they
+ * used to vanish into a closed branch, out of sight and, when a drag did not
+ * start from the selection, not selected either.
+ */
 function toParentItem({ target, draggedIds }: Drop) {
   const parentId = target.workItemId;
-  const ids = draggedIds.filter((id) => id !== parentId);
+  const ids = draggedIds.filter((id) => id !== parentId && store().workItems[id]);
   ids.forEach((id) => store().reparentWorkItem(id, parentId, target.treeId, target.backlogId));
-  if (ids.length > 0) toastReparented(ids.length, titleOf(parentId));
+  if (ids.length === 0) return;
+  showUnder(parentId, target.treeId);
+  store().selectWorkItemRange(ids, false);
+  toastReparented(ids.length, titleOf(parentId));
+}
+
+/** Open an item and every item above it in the tree, so its children are in view. */
+function showUnder(parentId: string, treeId: string | undefined) {
+  const { workItems, expandedWorkItems } = store();
+  const expanded = new Set(expandedWorkItems);
+  const before = expanded.size;
+  const seen = new Set<string>();
+  for (let id: string | null = parentId; id && workItems[id] && !seen.has(id); ) {
+    seen.add(id);
+    expanded.add(id);
+    id = treeId ? getEffectiveParentId(workItems[id], treeId) : workItems[id].parentId;
+  }
+  if (expanded.size !== before) useAppStore.setState({ expandedWorkItems: expanded });
 }
 
 /** Onto the root zone: become top-level items. */
