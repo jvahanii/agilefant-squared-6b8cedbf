@@ -240,13 +240,30 @@ export function isStatementTimeout(error: { message?: string; code?: string } | 
   return !!error && (error.code === '57014' || /statement timeout/i.test(error.message ?? ''));
 }
 
-/** A write, tried again while the database keeps stopping it for taking too long. */
+/**
+ * PostgREST's own "the database is out of reach" errors: it could not connect
+ * (PGRST000), its connection failed (PGRST001), it could not load the schema
+ * (PGRST002, "Could not query the database for the schema cache. Retrying."),
+ * or no connection came free in time (PGRST003). Each is answered before the
+ * request reaches the database, so nothing of it has been done. They come in
+ * the same stalls as statement timeouts — on 2026-11-11 a save of an order met
+ * PGRST002 and was shown as failed, though a moment later it would have gone
+ * through. Not PGRST2xx and the rest: those say the request itself is wrong.
+ */
+const UNREACHABLE_CODES = new Set(['PGRST000', 'PGRST001', 'PGRST002', 'PGRST003']);
+
+/** A request stopped by a stalled or unreachable database, safe to send again. */
+export function isStall(error: { message?: string; code?: string } | null): boolean {
+  return !!error && (isStatementTimeout(error) || UNREACHABLE_CODES.has(error.code ?? ''));
+}
+
+/** A write, tried again while the database keeps stopping it for taking too long or is out of reach. */
 export async function withStallRetry<T extends { error: { message?: string; code?: string } | null }>(
   send: () => PromiseLike<T>,
 ): Promise<T> {
   let result = await send();
   for (const delay of STALL_RETRY_DELAYS_MS) {
-    if (!isStatementTimeout(result.error)) break;
+    if (!isStall(result.error)) break;
     await new Promise((resolve) => setTimeout(resolve, delay));
     result = await send();
   }

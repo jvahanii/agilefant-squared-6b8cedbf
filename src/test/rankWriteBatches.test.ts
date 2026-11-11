@@ -177,6 +177,48 @@ describe("saving an item while the database has stalled", () => {
   });
 });
 
+// "Failed to save ranking — Could not query the database for the schema cache.
+// Retrying." (2026-11-11), from PostgREST while the database had stalled. It and
+// its siblings are answered before the request reaches the database.
+describe("saving while PostgREST cannot reach the database", () => {
+  const UNREACHABLE = [
+    { code: "PGRST000", message: "Could not connect with the database" },
+    { code: "PGRST001", message: "Database client error. Retrying the connection." },
+    { code: "PGRST002", message: "Could not query the database for the schema cache. Retrying." },
+    { code: "PGRST003", message: "Timed out acquiring connection from connection pool." },
+  ];
+
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it.each(UNREACHABLE)("sends a list's order again, without a word, after $code", async (error) => {
+    upsertResults = [{ error }, { error }];
+    const pending = upsertWorkItemBacklogRankRowsDetailed(rows(3));
+    await vi.runAllTimersAsync();
+    await expect(pending).resolves.toMatchObject({ ok: true });
+    expect(upsertCalls).toHaveLength(3);
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("says so only when the database stays out of reach through every try", async () => {
+    const error = UNREACHABLE[2];
+    upsertResults = STALL_RETRY_DELAYS_MS.map(() => ({ error })).concat({ error });
+    const pending = upsertWorkItemBacklogRankRowsDetailed(rows(3));
+    await vi.runAllTimersAsync();
+    await expect(pending).resolves.toMatchObject({ ok: false });
+    expect(upsertCalls).toHaveLength(STALL_RETRY_DELAYS_MS.length + 1);
+    expect(toast).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not take a wrong request for an unreachable database", async () => {
+    upsertResults = [{ error: { code: "PGRST204", message: "Could not find the column in the schema cache" } }];
+    const pending = upsertWorkItemBacklogRankRowsDetailed(rows(3));
+    await vi.runAllTimersAsync();
+    await expect(pending).resolves.toMatchObject({ ok: false });
+    expect(upsertCalls).toHaveLength(1);
+  });
+});
+
 describe("reading a list's ranks while the database has stalled", () => {
   beforeEach(() => {
     rpcResults.length = 0;
