@@ -2092,6 +2092,7 @@ export type Database = {
       }
       current_user_id: { Args: never; Returns: string }
       db_io_report: { Args: { _hours?: number }; Returns: Json }
+      delete_my_account: { Args: never; Returns: Json }
       get_published_backlog: { Args: { _token: string }; Returns: Json }
       get_published_backlog_unchecked: {
         Args: { _token: string }

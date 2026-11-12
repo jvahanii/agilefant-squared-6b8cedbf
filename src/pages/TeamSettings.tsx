@@ -46,6 +46,7 @@ import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { usePublishedLinksStore } from "@/store/publishedLinksStore";
 import { useNavigate } from "react-router-dom";
 import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
+import { DeleteAccountCard } from "@/components/DeleteAccountCard";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { BackupsCard } from "@/components/BackupsCard";
 import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
@@ -772,6 +773,8 @@ export default function TeamSettings() {
           </CardContent>
         </Card>
 
+        <DeleteAccountCard />
+
         <div id="bells-whistles">
           <BellsAndWhistlesSection />
         </div>
@@ -938,7 +941,7 @@ export default function TeamSettings() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">View the terms you agreed to when creating your account.</p>
+              <p className="text-sm text-muted-foreground">The terms you agreed to when creating your account, including how we handle personal data.</p>
               <Button variant="outline" size="sm" onClick={() => setTosOpen(true)}>
                 View
               </Button>

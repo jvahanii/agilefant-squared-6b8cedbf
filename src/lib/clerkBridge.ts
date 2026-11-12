@@ -59,6 +59,8 @@ function publish(next: ClerkState) {
  */
 let signOutFromClerk: (() => Promise<unknown>) | null = null;
 let clerkRef: { openUserProfile: () => void } | null = null;
+/** The signed-in Clerk user, held whole: its methods read `this`. */
+let clerkUser: { delete: () => Promise<unknown> } | null = null;
 
 export async function clerkSignOut(): Promise<void> {
   await signOutFromClerk?.();
@@ -82,6 +84,17 @@ export function clerkHasSession(): boolean {
  */
 export function openClerkUserProfile(): void {
   clerkRef?.openUserProfile();
+}
+
+/**
+ * Delete the signed-in person's Clerk account, ending the session with it.
+ * Called after delete_my_account() has removed their data here: the sign-in
+ * lives only at Clerk, and only Clerk can remove it. Needs "Allow users to
+ * delete their accounts" on in the Clerk dashboard, which it is by default.
+ */
+export async function deleteClerkAccount(): Promise<void> {
+  if (!clerkUser) throw new Error("Not signed in");
+  await clerkUser.delete();
 }
 
 /**
@@ -130,6 +143,13 @@ export function ClerkBridge() {
       clerkRef = null;
     };
   }, [clerk]);
+
+  useEffect(() => {
+    clerkUser = user ?? null;
+    return () => {
+      clerkUser = null;
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!isLoaded) {

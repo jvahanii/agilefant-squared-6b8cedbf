@@ -423,6 +423,9 @@ export default function Landing() {
             <Link to="/user-guide" className="hover:text-foreground">
               User guide
             </Link>
+            <Link to="/terms" className="hover:text-foreground">
+              Terms and privacy
+            </Link>
             <a href="mailto:jvahanii@gmail.com" className="hover:text-foreground">
               support: jvahanii@gmail.com
             </a>

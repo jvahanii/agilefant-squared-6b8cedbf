@@ -66,6 +66,10 @@ export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up
           <Link to="/user-guide" className="hover:text-foreground underline underline-offset-4 transition-colors">
             View User Guide
           </Link>
+          {" · "}
+          <Link to="/terms" className="hover:text-foreground underline underline-offset-4 transition-colors">
+            Terms and privacy
+          </Link>
 
         </p>
       </div>

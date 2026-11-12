@@ -59,6 +59,7 @@ const ManagerScreen = lazy(importWithRetry(() => import("./pages/ManagerScreen")
 const UserGuide = lazy(importWithRetry(() => import("./pages/UserGuide")));
 const BellsAndWhistles = lazy(importWithRetry(() => import("./pages/BellsAndWhistles")));
 const PublicBacklog = lazy(importWithRetry(() => import("./pages/PublicBacklog")));
+const Terms = lazy(importWithRetry(() => import("./pages/Terms")));
 const JobAdsGuide = lazy(importWithRetry(() => import("./pages/JobAdsGuide")));
 const JiraGuide = lazy(importWithRetry(() => import("./pages/JiraGuide")));
 const Landing = lazy(importWithRetry(() => import("./pages/Landing")));
@@ -256,6 +257,14 @@ const App = () => (
                 element={
                   <Suspense fallback={null}>
                     <JiraGuide />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/terms"
+                element={
+                  <Suspense fallback={null}>
+                    <Terms />
                   </Suspense>
                 }
               />

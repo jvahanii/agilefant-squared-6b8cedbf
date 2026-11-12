@@ -47,7 +47,7 @@ describe("Landing", () => {
         expect(href, href).toMatch(/^mailto:[^@\s]+@[^@\s.]+\.[^@\s]+$/);
         continue;
       }
-      expect(href, href).toMatch(/^\/(auth(\/sign-up)?|user-guide)$/);
+      expect(href, href).toMatch(/^\/(auth(\/sign-up)?|user-guide|terms)$/);
     }
   });
 

@@ -231,3 +231,20 @@ publish functions do.
   only removes their data. `cleanup_orphaned_users()` no longer touches
   `auth.users`, and those rows are kept purely as a record of who owned what
   before the migration.
+
+## Deleting an account
+
+Anyone signed in can delete their own account under *Delete account* in Team
+settings (`DeleteAccountCard`). `delete_my_account()` decides and deletes in
+one transaction: it refuses when an organisation would be left with members
+but no owner, or when an organisation about to go shares a tree with another.
+Otherwise it deletes the organisations no one else belongs to with all their
+data, forgets the person's email in the change log and their snoozes, and
+deletes the profile, which takes the memberships and team places with it. The
+items they made and the time they logged stay with the organisations that
+carry on, no longer tied to a name. The app then deletes the Clerk user
+(`deleteClerkAccount`) — only Clerk can — and clears the browser's cache.
+
+How long data is kept is in the terms (`TermsContent`, public at `/terms`)
+and enforced daily by `apply_retention()`; `src/test/termsPrivacy.test.tsx`
+keeps the two in step.
