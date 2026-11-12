@@ -27,6 +27,7 @@ import {
   Clock,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { fetchIsSuperuser } from "@/lib/superuser";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,16 +97,11 @@ export default function ManagerScreen() {
   // Check superuser status
   useEffect(() => {
     if (!user?.id) return;
-    supabase
-      .from("profiles")
-      .select("is_superuser")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        const su = data?.is_superuser ?? false;
-        setIsSuperuser(su);
-        if (!su) navigate("/");
-      });
+    // In this session: a superuser signed in without a second factor is not one.
+    fetchIsSuperuser(user.id).then(({ isSuperuser: su }) => {
+      setIsSuperuser(su);
+      if (!su) navigate("/");
+    });
   }, [user?.id]);
 
   // Load all data once superuser confirmed

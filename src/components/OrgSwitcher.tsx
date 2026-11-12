@@ -17,6 +17,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { fetchIsSuperuser } from "@/lib/superuser";
 
+/** Why a superuser sees no superuser tools, and how to get them back. */
+export const SECOND_FACTOR_NOTICE =
+  "They need a sign-in with a second factor. Sign out and sign in with Google, or with your password and an authenticator-app code.";
+
+/** The notice is shown once per user per page load, not on every remount. */
+let noticeShownFor: string | null = null;
+
 export function OrgSwitcher() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -31,7 +38,17 @@ export function OrgSwitcher() {
   useEffect(() => {
     if (!user?.id) return;
     // Shared with the scramble setting: one read for both (superuser.ts).
-    fetchIsSuperuser(user.id).then(({ isSuperuser }) => setIsSuperuser(isSuperuser));
+    fetchIsSuperuser(user.id).then(({ isSuperuser, needsSecondFactor }) => {
+      setIsSuperuser(isSuperuser);
+      if (needsSecondFactor && noticeShownFor !== user.id) {
+        noticeShownFor = user.id;
+        toast({
+          title: "Superuser rights are off in this session",
+          description: SECOND_FACTOR_NOTICE,
+          duration: 15000,
+        });
+      }
+    });
   }, [user?.id]);
 
   const handleCreate = async (e: React.FormEvent) => {

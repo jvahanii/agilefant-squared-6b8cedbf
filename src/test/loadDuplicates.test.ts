@@ -32,6 +32,9 @@ vi.mock("@/integrations/supabase/client", () => {
               : { data: [{ tree_id: "org::t1", org_id: "partner", org_name: "Partner" }], error: null },
           );
         }
+        if (name === "my_superuser_status") {
+          return Promise.resolve({ data: { is_superuser: true, needs_second_factor: false }, error: null });
+        }
         // The old one-tree call, for the fallback.
         return Promise.resolve(failTrees ? { data: null, error: { message: "boom" } } : { data: [], error: null });
       },
@@ -86,7 +89,7 @@ describe("whether the user is a superuser", () => {
     const [a, b] = await Promise.all([fetchIsSuperuser("u1"), fetchIsSuperuser("u1")]);
     expect(a.isSuperuser && b.isSuperuser).toBe(true);
     await fetchIsSuperuser("u1");
-    expect(calls.filter((c) => c === "profiles")).toHaveLength(1);
+    expect(calls.filter((c) => c === "my_superuser_status")).toHaveLength(1);
   });
 });
 

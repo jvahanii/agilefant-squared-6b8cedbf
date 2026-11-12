@@ -50,7 +50,7 @@ import { fetchPosting, fillDeadlines } from '../_shared/fetchDeadline.ts';
 import { rememberLanguage } from '../_shared/postingLanguage.ts';
 import { careerPageFor, MAX_CAREER_PAGES, pageMessageId, positionsAsLinks } from '../_shared/careerPages.ts';
 import { wellFormedDeadline } from '../_shared/deadlines.ts';
-import { requireAppUser } from '../_shared/auth.ts';
+import { requireAppUser, type AppUser } from '../_shared/auth.ts';
 
 const MAX_MESSAGES = 100;
 /** Postings per posting_facts call: one round of the reader's concurrency. */
@@ -69,18 +69,16 @@ async function assertOrgMember(userId: string, orgId: string) {
   if (!data) throw new Error('forbidden: not a member of this organization');
 }
 
-/** An owner or admin of the organization, or a superuser. */
-async function canManageOrg(userId: string, orgId: string): Promise<boolean> {
-  const admin = adminClient();
-  const { data: membership } = await admin
+/** An owner or admin of the organization, or a superuser in this session. */
+async function canManageOrg(user: AppUser, orgId: string): Promise<boolean> {
+  if (user.isSuperuser) return true;
+  const { data: membership } = await adminClient()
     .from('memberships')
     .select('role')
-    .eq('user_id', userId)
+    .eq('user_id', user.id)
     .eq('organization_id', orgId)
     .maybeSingle();
-  if (membership?.role === 'owner' || membership?.role === 'admin') return true;
-  const { data: profile } = await admin.from('profiles').select('is_superuser').eq('id', userId).maybeSingle();
-  return !!profile?.is_superuser;
+  return membership?.role === 'owner' || membership?.role === 'admin';
 }
 
 /**
@@ -133,7 +131,7 @@ async function dropOwnClientConnections(admin: ReturnType<typeof adminClient>, o
 
 /** One request, as every action is handed it. */
 interface Request_ {
-  user: { id: string };
+  user: AppUser;
   admin: ReturnType<typeof adminClient>;
   // deno-lint-ignore no-explicit-any
   body: any;
@@ -180,7 +178,7 @@ async function status({ user, admin, organizationIdFor }: Request_): Promise<Res
           configured: !!client,
           clientId: client?.clientId ?? null,
           updatedAt: client?.updatedAt ?? null,
-          canManage: await canManageOrg(user.id, organizationId),
+          canManage: await canManageOrg(user, organizationId),
         },
   });
 }
@@ -302,7 +300,7 @@ async function setOauthClient({ user, admin, body, organizationIdFor }: Request_
   const organizationId = organizationIdFor();
   const clientId = String(body.clientId ?? '').trim();
   const clientSecret = String(body.clientSecret ?? '').trim();
-  if (!(await canManageOrg(user.id, organizationId))) {
+  if (!(await canManageOrg(user, organizationId))) {
     throw new Error("forbidden: only an owner or admin can set this organization's Google OAuth client");
   }
   if (await usesSharedConnector(admin, organizationId)) {
@@ -340,7 +338,7 @@ async function setOauthClient({ user, admin, body, organizationIdFor }: Request_
 
 async function removeOauthClient({ user, admin, organizationIdFor }: Request_): Promise<Response> {
   const organizationId = organizationIdFor();
-  if (!(await canManageOrg(user.id, organizationId))) {
+  if (!(await canManageOrg(user, organizationId))) {
     throw new Error("forbidden: only an owner or admin can remove this organization's Google OAuth client");
   }
   const { error } = await admin.from('organization_google_oauth_clients').delete().eq('organization_id', organizationId);

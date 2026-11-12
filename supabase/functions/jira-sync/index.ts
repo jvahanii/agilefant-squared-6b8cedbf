@@ -19,7 +19,7 @@
 // the real Jira, the real database, the queue and its lock.
 
 import { adminClient, corsHeaders, json } from '../_shared/gmail.ts';
-import { requireAppUser } from '../_shared/auth.ts';
+import { requireAppUser, type AppUser } from '../_shared/auth.ts';
 import { jiraPort, JiraError, type JiraConfig } from '../_shared/jiraApi.ts';
 import { JiraSync, type AgilefantItem, type AgilefantPort, type IssueLinkRef, type Link } from '../_shared/jiraEngine.ts';
 import { normalizeHyperlinks, type SyncState, type SyncHyperlink } from '../_shared/jiraMapping.ts';
@@ -544,16 +544,16 @@ async function drainThenKick(admin: Admin, conn: Connection, waitMs: number) {
 
 // ─── Who may do what ─────────────────────────────────────────────────────────
 
-async function assertMember(admin: Admin, userId: string, org: string) {
-  const { data } = await admin.from('memberships').select('role').eq('user_id', userId).eq('organization_id', org).maybeSingle();
+async function assertMember(admin: Admin, user: AppUser, org: string) {
+  const { data } = await admin.from('memberships').select('role').eq('user_id', user.id).eq('organization_id', org).maybeSingle();
   if (data) return data.role as string;
-  const { data: profile } = await admin.from('profiles').select('is_superuser').eq('id', userId).maybeSingle();
-  if (profile?.is_superuser) return 'superuser';
+  // A superuser only in a session signed in with a second factor (is_superuser).
+  if (user.isSuperuser) return 'superuser';
   throw new Error('forbidden: not a member of this organization');
 }
 
-async function assertManager(admin: Admin, userId: string, org: string) {
-  const role = await assertMember(admin, userId, org);
+async function assertManager(admin: Admin, user: AppUser, org: string) {
+  const role = await assertMember(admin, user, org);
   if (role !== 'owner' && role !== 'admin' && role !== 'superuser') throw new Error('forbidden: owners and admins only');
 }
 
@@ -757,13 +757,13 @@ Deno.serve(async (req) => {
     const user = await requireAppUser(req);
 
     if (action === 'status') {
-      await assertMember(admin, user.id, org);
+      await assertMember(admin, user, org);
       return json(await statusOf(admin, org));
     }
 
     // The site's spaces, to choose from: with the account the organization's spaces use, or the one given.
     if (action === 'projects') {
-      await assertManager(admin, user.id, org);
+      await assertManager(admin, user, org);
       const existing = (await getConnections(admin, org))[0];
       const { baseUrl, email } = accountFrom(body, existing);
       const probe = jiraPort({ baseUrl, email, token: token(), projectKey: '', pointsField: null });
@@ -773,7 +773,7 @@ Deno.serve(async (req) => {
 
     // A space kept in step with a list: one there is, or one made for it in the tree given.
     if (action === 'addSpace') {
-      await assertManager(admin, user.id, org);
+      await assertManager(admin, user, org);
       const existing = await getConnections(admin, org);
       const { baseUrl, email } = accountFrom(body, existing[0]);
       const projectKey = String(body.projectKey ?? '').trim().toUpperCase();
@@ -823,7 +823,7 @@ Deno.serve(async (req) => {
 
     // A list moved to Jira: a new space made for it, named after it, and kept in step with it.
     if (action === 'createSpaceFromList') {
-      await assertManager(admin, user.id, org);
+      await assertManager(admin, user, org);
       const existing = await getConnections(admin, org);
       const { baseUrl, email } = accountFrom(body, existing[0]);
       const backlogId = String(body.backlogId ?? '');
@@ -857,7 +857,7 @@ Deno.serve(async (req) => {
 
     // A space taken off: its sync stops and its pairs are forgotten; the list and the issues stay.
     if (action === 'removeSpace') {
-      await assertManager(admin, user.id, org);
+      await assertManager(admin, user, org);
       const conn = await getConnection(admin, org, String(body.connectionId ?? ''));
       if (!conn) return json({ error: 'No such space here' }, 404);
       if (conn.webhook_url) await jiraPort(configFor(conn)).removeWebhook(conn.webhook_url).catch(() => undefined);
@@ -868,7 +868,7 @@ Deno.serve(async (req) => {
 
     // Everything, both ways: one space, or every space of the organization.
     if (action === 'sync') {
-      await assertMember(admin, user.id, org);
+      await assertMember(admin, user, org);
       const wanted = body.connectionId ? [await getConnection(admin, org, String(body.connectionId))] : await getConnections(admin, org);
       const conns = wanted.filter((c): c is Connection => !!c);
       if (conns.length === 0) return json({ error: 'Jira is not connected' }, 409);
@@ -890,7 +890,7 @@ Deno.serve(async (req) => {
 
     // One item's sync stopped, or resumed, from its menu: the pair kept either way.
     if (action === 'stopItem') {
-      await assertMember(admin, user.id, org);
+      await assertMember(admin, user, org);
       const workItemId = String(body.workItemId ?? '');
       const stopped = body.stopped !== false;
       const { data: link } = await admin
@@ -920,7 +920,7 @@ Deno.serve(async (req) => {
 
     // Every space taken off.
     if (action === 'disconnect') {
-      await assertManager(admin, user.id, org);
+      await assertManager(admin, user, org);
       for (const conn of await getConnections(admin, org)) {
         if (conn.webhook_url) await jiraPort(configFor(conn)).removeWebhook(conn.webhook_url).catch(() => undefined);
         await admin.from('jira_connections').delete().eq('id', conn.id);

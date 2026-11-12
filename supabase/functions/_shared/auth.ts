@@ -22,6 +22,12 @@ export interface AppUser {
   /** profiles.id -- the uuid every table keys on, never a Clerk user id. */
   id: string;
   email: string | null;
+  /**
+   * A superuser in this session. Asked of the database as the caller, so it
+   * follows is_superuser's rule: only when the sign-in had a second factor.
+   * Never read profiles.is_superuser for the caller's own rights.
+   */
+  isSuperuser: boolean;
 }
 
 /**
@@ -47,11 +53,10 @@ export async function requireAppUser(req: Request): Promise<AppUser> {
 
   // The email is read with the service role because the caller may not be able
   // to select their own profile row under RLS before they have a membership.
-  const { data: profile } = await adminClient()
-    .from('profiles')
-    .select('email')
-    .eq('id', userId)
-    .maybeSingle();
+  const [{ data: profile }, { data: superuser }] = await Promise.all([
+    adminClient().from('profiles').select('email').eq('id', userId).maybeSingle(),
+    caller.rpc('is_superuser', { _user_id: userId }),
+  ]);
 
-  return { id: userId as string, email: profile?.email ?? null };
+  return { id: userId as string, email: profile?.email ?? null, isSuperuser: superuser === true };
 }

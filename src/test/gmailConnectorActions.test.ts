@@ -70,7 +70,7 @@ vi.mock("../../supabase/functions/_shared/gmail.ts", async () => {
 vi.mock("../../supabase/functions/_shared/auth.ts", () => ({
   requireAppUser: async (req: Request) => {
     if (!req.headers.get("Authorization")) throw new Error("unauthorized: no bearer token");
-    return { id: "user-1" };
+    return { id: "user-1", email: null, isSuperuser: false };
   },
 }));
 vi.mock("../../supabase/functions/_shared/fetchDeadline.ts", () => ({

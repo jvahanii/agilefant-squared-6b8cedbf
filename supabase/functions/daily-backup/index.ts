@@ -16,7 +16,6 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.toLowerCase().startsWith("bearer ")
@@ -37,25 +36,14 @@ Deno.serve(async (req) => {
   // auth.getUser() rejects a Clerk token outright, which locked the superuser
   // out of triggering a backup by hand.
   if (!authorized) {
-    let callerId: string;
     try {
-      callerId = (await requireAppUser(req)).id;
+      authorized = (await requireAppUser(req)).isSuperuser;
     } catch {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-      auth: { persistSession: false },
-    });
-    const { data: profile } = await userClient
-      .from("profiles")
-      .select("is_superuser")
-      .eq("id", callerId)
-      .maybeSingle();
-    authorized = profile?.is_superuser === true;
   }
 
   if (!authorized) {

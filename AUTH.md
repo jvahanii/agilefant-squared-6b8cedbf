@@ -221,6 +221,26 @@ publish functions do.
   `vitest.config.ts` sets `fileParallelism: false`. If those fail, suspect
   machine load before suspecting the code.
 
+## Superusers need a second factor
+
+`profiles.is_superuser` says an account is a superuser's; `is_superuser()`
+says whether the caller is one *in this session*. For the caller's own
+account it also requires the second number of Clerk's `fva` claim (minutes
+since the second factor was verified) to be 0 or more. Clerk sets it for a
+Google sign-in and for a password plus authenticator-app code, and sets −1 for
+a password alone. A password-only session therefore gets no superuser rights:
+every policy, function and edge function asks `is_superuser()` (edge functions
+through `requireAppUser().isSuperuser`), and the app asks
+`my_superuser_status()`, which also says when the rights are off for want of
+a second factor.
+
+- Asked about *another* account, and with no signed-in user (cron, service
+  role), `is_superuser()` answers from the profile as before.
+- Protecting a superuser — `delete_my_account()` refusing to delete one — reads
+  the profile column, never `is_superuser()`, or a password alone could do it.
+- Never read `profiles.is_superuser` to decide the caller's own rights;
+  `superuserSecondFactor.test.ts` fails if code selects it.
+
 ## Access
 
 - Supabase access token: `~/.supabase/agilefant-access-token`.

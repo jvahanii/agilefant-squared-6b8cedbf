@@ -415,7 +415,6 @@ exports[`the Gmail function > says whether this user is connected, and how the o
       "memberships: select(id) eq(user_id,user-1) eq(organization_id,org-1)",
       "gmail_connections: select(connected_email, updated_at) eq(user_id,user-1) eq(organization_id,org-1)",
       "memberships: select(role) eq(user_id,user-1) eq(organization_id,org-1)",
-      "profiles: select(is_superuser) eq(id,user-1)",
     ],
     "gmail": [],
     "status": 200,
@@ -460,7 +459,6 @@ exports[`the Gmail function > sets and removes the organisation's own client, fo
     },
     "db": [
       "memberships: select(role) eq(user_id,user-1) eq(organization_id,org-1)",
-      "profiles: select(is_superuser) eq(id,user-1)",
     ],
     "gmail": [],
     "status": 403,

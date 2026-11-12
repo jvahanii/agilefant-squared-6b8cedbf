@@ -49,6 +49,7 @@ import { TermsOfServiceDialog } from "@/components/TermsOfServiceDialog";
 import { DeleteAccountCard } from "@/components/DeleteAccountCard";
 import { TimesheetBrowserDialog } from "@/components/TimesheetBrowserDialog";
 import { BackupsCard } from "@/components/BackupsCard";
+import { fetchIsSuperuser } from "@/lib/superuser";
 import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
 import { WhatsappIntegrationsCard } from "@/components/WhatsappIntegrationsCard";
 import {
@@ -137,12 +138,8 @@ export default function TeamSettings() {
 
   useEffect(() => {
     if (!user?.id) return;
-    supabase
-      .from("profiles")
-      .select("is_superuser")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => setIsSuperuser(data?.is_superuser ?? false));
+    // In this session: a superuser signed in without a second factor is not one.
+    fetchIsSuperuser(user.id).then(({ isSuperuser: su }) => setIsSuperuser(su));
   }, [user?.id]);
 
   useEffect(() => {

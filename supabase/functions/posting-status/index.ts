@@ -104,12 +104,7 @@ Deno.serve(async (req) => {
     // here because the endpoint is the thing worth protecting: it fetches
     // arbitrary URLs from the server's own address. Gating that in the UI alone
     // would leave it open to any signed-in account that called it directly.
-    const { data: profile } = await adminClient()
-      .from('profiles')
-      .select('is_superuser')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (!profile?.is_superuser) throw new Error('forbidden: superuser only');
+    if (!user.isSuperuser) throw new Error('forbidden: superuser only');
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const urls = (Array.isArray(body.urls) ? body.urls : [])
