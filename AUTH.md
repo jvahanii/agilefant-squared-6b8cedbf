@@ -48,8 +48,12 @@ without signing in, so the whole of it is kept narrow:
 
 - **The route sits above `AppRoutes`** in `src/App.tsx`, so a visitor never waits
   on Clerk or triggers membership and data loading.
-- **Anonymous visitors can call exactly one thing**: `get_published_backlog(token)`.
-  It returns titles and structure, plus whichever of descriptions, statuses,
+- **Anonymous visitors can call exactly two things**: `get_published_backlog(token)`,
+  and `get_published_link_features(token)` for which of the organization's
+  features the page shows. The anon role can execute no other SECURITY DEFINER
+  function, and new functions get no anon or PUBLIC grant by default
+  (migration `20261112090000`): a function meant for signed-out visitors needs
+  its own `GRANT EXECUTE ... TO anon`. `get_published_backlog` returns titles and structure, plus whichever of descriptions, statuses,
   points, teams, labels, hyperlinks and logged-time totals the link shows. What it never returns: the individual
   members of a team (people are always shown as teams), anything from profiles
   such as names or emails, individual time entries or their notes, and financial
