@@ -223,6 +223,13 @@ publish functions do.
 
 ## Superusers need a second factor
 
+> **Not yet effective (2026-11-12).** On this Clerk instance a password-only
+> session carries `fva = [n, n]`, not `[n, -1]` as Clerk's docs say, so the
+> check below lets it through. The fix is a custom session claim for
+> `user.two_factor_enabled`, with the authenticator app enabled in Clerk and
+> enrolled by the superuser; until then a password alone still gives
+> superuser rights.
+
 `profiles.is_superuser` says an account is a superuser's; `is_superuser()`
 says whether the caller is one *in this session*. For the caller's own
 account it also requires the second number of Clerk's `fva` claim (minutes
