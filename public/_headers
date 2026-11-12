@@ -1,0 +1,38 @@
+# Response headers Cloudflare Pages adds to everything it serves.
+# Pages already sends X-Content-Type-Options: nosniff and
+# Referrer-Policy: strict-origin-when-cross-origin; they are not repeated here.
+#
+# The Content-Security-Policy lists every place the app loads from or talks to:
+#   clerk.agilefant.org            sign-in (Clerk's script and API)
+#   challenges.cloudflare.com      Clerk's bot check on sign-up
+#   clerk-telemetry.com            Clerk's own error reporting
+#   hwwjwkdbautfkhpxuord.supabase.co  the database, files and live updates
+#   api.frankfurter.dev            exchange rates
+#   fonts.googleapis.com / fonts.gstatic.com  the Inter font
+# Something new the app fetches has to be added here, or the browser blocks it
+# (src/test/securityHeaders.test.ts checks the list against the source).
+# Images may come from any https address: people paste links to them.
+
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), usb=(), payment=(), interest-cohort=()
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://clerk.agilefant.org https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://hwwjwkdbautfkhpxuord.supabase.co wss://hwwjwkdbautfkhpxuord.supabase.co https://clerk.agilefant.org https://clerk-telemetry.com https://api.frankfurter.dev; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+
+# Stand-alone pages with their script written into the page itself.
+/gmail-callback
+  ! Content-Security-Policy-Report-Only
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+
+/gmail-callback.html
+  ! Content-Security-Policy-Report-Only
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+
+/isanpaivakortti*
+  ! Content-Security-Policy-Report-Only
+
+/kuviotreeni*
+  ! Content-Security-Policy-Report-Only
+
+/talentloom-iq*
+  ! Content-Security-Policy-Report-Only
