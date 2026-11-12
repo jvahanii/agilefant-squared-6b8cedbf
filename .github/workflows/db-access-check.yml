@@ -1,0 +1,52 @@
+name: Database access check
+
+# Fails when signed-out visitors can reach more of the database than they are
+# meant to: a SECURITY DEFINER function they can call, a table without row
+# level security, a policy written for everyone, or a default that would make
+# new functions callable by everyone again. The rules and what each problem
+# means are in scripts/check-db-access.sql.
+#
+# On 2026-11-12 two functions turned out to let anyone holding the public key
+# change data (20261112090000). They had come in with ordinary migrations; this
+# runs after every migration deploy, and every morning for changes made in the
+# dashboard or by Lovable. GitHub emails about a failed run.
+
+on:
+  workflow_run:
+    workflows: ["Deploy Supabase Migrations"]
+    types: [completed]
+  schedule:
+    - cron: "40 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check what signed-out visitors can reach
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [[ -z "$DB_URL" ]]; then
+            echo "::error::SUPABASE_DB_URL secret is not set."
+            exit 1
+          fi
+          problems=$(psql "$DB_URL" -X -At -F $'\t' -v ON_ERROR_STOP=1 -f scripts/check-db-access.sql)
+          if [[ -z "$problems" ]]; then
+            echo "Nothing reachable signed out beyond what is meant to be." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### Signed-out visitors can reach more than they should"
+            echo "| Kind | What | Problem |"
+            echo "|---|---|---|"
+            while IFS=$'\t' read -r kind name problem; do
+              echo "| $kind | \`$name\` | $problem |"
+            done <<< "$problems"
+          } >> "$GITHUB_STEP_SUMMARY"
+          while IFS=$'\t' read -r kind name problem; do
+            echo "::error title=$kind $name::$problem"
+          done <<< "$problems"
+          exit 1
