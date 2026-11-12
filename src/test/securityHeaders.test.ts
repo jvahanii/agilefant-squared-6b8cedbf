@@ -88,19 +88,23 @@ describe("the site's security headers", () => {
     for (const origin of imports) expect(directive("style-src"), origin).toContain(origin);
   });
 
-  it("gives the stand-alone pages their own policy instead of the app's", () => {
-    // gmail-callback.html and the others carry their script inside the page,
-    // which the app's policy forbids. Both of Pages' addresses for the
-    // callback — with and without .html — need the rule.
-    for (const path of ["/gmail-callback", "/gmail-callback.html"]) {
-      const r = rule(path);
-      expect(r.has("! Content-Security-Policy-Report-Only") || r.has("! Content-Security-Policy")).toBe(true);
-      expect(r.get("Content-Security-Policy")).toMatch(/frame-ancestors 'none'/);
-    }
-    const pages = readdirSync(join(root, "public")).filter((f) => f.endsWith(".html"));
+  it("runs the Gmail callback under the app's policy: no script written into the page", () => {
+    // Google sends the person back here after they allow Gmail access. Script
+    // inside the page would be blocked, the window would sit on "Finishing
+    // Gmail connection…" forever, and the connection would never complete.
+    const html = readFileSync(join(root, "public", "gmail-callback.html"), "utf8");
+    expect(html).toContain('<script src="/gmail-callback.js"></script>');
+    expect(html).not.toMatch(/<script>|<script(?![^>]*\bsrc=)[^>]*>|\son[a-z]+=/i);
+    expect(readFileSync(join(root, "public", "gmail-callback.js"), "utf8")).toContain("gmail-oauth");
+    expect(headersFile).not.toMatch(/^\/gmail-callback/m);
+  });
+
+  it("lifts the policy only from the stand-alone pages that need script inside the page", () => {
+    const pages = readdirSync(join(root, "public")).filter((f) => f.endsWith(".html") && f !== "gmail-callback.html");
     for (const page of pages) {
-      const name = page.replace(/\.html$/, "");
-      expect(headersFile, `a rule for /${page}`).toMatch(new RegExp(`^/${name}(\\*|\\.html)?$`, "m"));
+      const html = readFileSync(join(root, "public", page), "utf8");
+      const path = `/${page.replace(/\.html$/, "")}*`;
+      if (/<script>|\son[a-z]+=/i.test(html)) expect(rule(path).has("! Content-Security-Policy"), path).toBe(true);
     }
   });
 });

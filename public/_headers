@@ -17,22 +17,17 @@
   Strict-Transport-Security: max-age=31536000
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), microphone=(), geolocation=(), usb=(), payment=(), interest-cohort=()
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://clerk.agilefant.org https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://hwwjwkdbautfkhpxuord.supabase.co wss://hwwjwkdbautfkhpxuord.supabase.co https://clerk.agilefant.org https://clerk-telemetry.com https://api.frankfurter.dev; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://clerk.agilefant.org https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://hwwjwkdbautfkhpxuord.supabase.co wss://hwwjwkdbautfkhpxuord.supabase.co https://clerk.agilefant.org https://clerk-telemetry.com https://api.frankfurter.dev; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 
-# Stand-alone pages with their script written into the page itself.
-/gmail-callback
-  ! Content-Security-Policy-Report-Only
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
-
-/gmail-callback.html
-  ! Content-Security-Policy-Report-Only
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
-
+# Stand-alone pages that carry their script inside the page, which the policy
+# above forbids. They are not part of the app and load nothing from it.
+# (gmail-callback.html keeps its script in gmail-callback.js, so it runs under
+# the app's policy.)
 /isanpaivakortti*
-  ! Content-Security-Policy-Report-Only
+  ! Content-Security-Policy
 
 /kuviotreeni*
-  ! Content-Security-Policy-Report-Only
+  ! Content-Security-Policy
 
 /talentloom-iq*
-  ! Content-Security-Policy-Report-Only
+  ! Content-Security-Policy
