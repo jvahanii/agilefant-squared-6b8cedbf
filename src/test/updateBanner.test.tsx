@@ -6,7 +6,7 @@
  * and the SPA fallback answers that missing file with `index.html` and a status
  * 200 — which looks exactly like a successful request for a new version.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 
 import { UpdateBanner } from "@/components/UpdateBanner";
@@ -37,7 +37,7 @@ const serve = (response: unknown) => {
 };
 
 const nav = () => {
-  const navigator: BuildNavigator & { reload: ReturnType<typeof vi.fn>; replace: ReturnType<typeof vi.fn> } = {
+  const navigator: BuildNavigator & { reload: Mock<() => void>; replace: Mock<(url: string) => void> } = {
     reload: vi.fn(),
     replace: vi.fn(),
   };

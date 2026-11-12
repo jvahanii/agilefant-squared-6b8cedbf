@@ -4,11 +4,11 @@
  * minute later — Clerk's tokens last sixty seconds — live changes stopped
  * arriving until a reload.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import { keepRealtimeAuthFresh, REALTIME_AUTH_REFRESH_MS } from "@/integrations/supabase/realtimeAuth";
 import { getSupabaseAccessToken, TOKEN_LEEWAY_SECONDS } from "@/integrations/supabase/authClient";
 
-let realtime: { setAuth: ReturnType<typeof vi.fn> };
+let realtime: { setAuth: Mock<(token?: string | null) => Promise<void>> };
 let stop: () => void;
 
 beforeEach(() => {

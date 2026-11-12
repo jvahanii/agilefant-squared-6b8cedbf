@@ -6,7 +6,7 @@
  * a 45-minute entry saved twice, a second apart, because Enter and the Save
  * button could both add while the first save was still on its way.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -43,7 +43,7 @@ beforeEach(() => {
   });
 });
 
-let onOpenChange: ReturnType<typeof vi.fn>;
+let onOpenChange: Mock<(open: boolean) => void>;
 const openDialog = () => {
   onOpenChange = vi.fn();
   render(<TimeLogDialog workItemId={ITEM} open onOpenChange={onOpenChange} />);
