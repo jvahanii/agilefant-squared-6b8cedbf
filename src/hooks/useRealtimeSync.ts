@@ -171,33 +171,43 @@ const OWN_UNFILTERED: Array<{ table: string; on: (payload: Payload) => void }> =
   },
 ];
 
+/** A Realtime filter for rows of these organisations. */
+function orgFilter(orgIds: string[]): string {
+  return orgIds.length === 1 ? `organization_id=eq.${orgIds[0]}` : `organization_id=in.(${orgIds.join(',')})`;
+}
+
 /**
- * A channel for one organisation's changes: our own, or a partner's that
- * shares trees with us. A partner's are applied only where they touch what
- * we can see (OrgTable.partnerSees).
+ * One channel for our organisation's changes and those of every partner that
+ * shares trees with us: one binding per table, filtered to all of them.
+ *
+ * Each binding is a subscription Realtime checks every change against, so a
+ * channel per partner multiplied them: 45 for an organisation with two
+ * partners, where this makes 21. A partner's change is applied only where it
+ * touches what we can see (OrgTable.partnerSees); whose it is, the row says.
+ * A deletion carries only the primary key, and is always applied, as before:
+ * a row we never had is simply not found.
  */
-function buildOrgChannel(name: string, orgId: string, partner: boolean) {
+function buildOrgChannel(name: string, ownOrgId: string, partnerOrgIds: string[]) {
   const channel = supabase.channel(name);
+  const allOrgIds = [ownOrgId, ...partnerOrgIds];
   for (const t of ORG_TABLES) {
-    if (partner && t.ownOnly) continue;
     channel.on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: t.table, filter: `organization_id=eq.${orgId}` },
+      { event: '*', schema: 'public', table: t.table, filter: orgFilter(t.ownOnly ? [ownOrgId] : allOrgIds) },
       (payload: Payload) => {
         if (t.whole) {
           t.whole(payload);
           return;
         }
         const row = rowOf(payload);
-        if (partner && payload.eventType !== 'DELETE' && t.partnerSees && !t.partnerSees(row)) return;
+        const fromPartner = payload.eventType !== 'DELETE' && row.organization_id !== ownOrgId;
+        if (fromPartner && t.partnerSees && !t.partnerSees(row)) return;
         t.apply?.(payload.eventType, row);
       },
     );
   }
-  if (!partner) {
-    for (const t of OWN_UNFILTERED) {
-      channel.on('postgres_changes', { event: '*', schema: 'public', table: t.table }, t.on);
-    }
+  for (const t of OWN_UNFILTERED) {
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: t.table }, t.on);
   }
   return channel;
 }
@@ -282,12 +292,6 @@ export function useRealtimeSync() {
     const unsubscribers: Array<() => void> = [];
     let destroyed = false;
 
-    const subscribePartnerOrg = (orgId: string) => {
-      unsubscribers.push(subscribeWithHealth(() => buildOrgChannel(`entity-realtime-${activeOrgId}-partner-${orgId}`, orgId, true)));
-    };
-
-    unsubscribers.push(subscribeWithHealth(() => buildOrgChannel(`entity-realtime-${activeOrgId}`, activeOrgId, false)));
-
     // Per-user snoozes (RLS already restricts to current user; no org filter needed).
     // Async: fetch the current user's id once, then subscribe filtered by it.
     (async () => {
@@ -304,36 +308,31 @@ export function useRealtimeSync() {
       unsubscribers.push(subscribeWithHealth(buildSnoozeChannel));
     })();
 
-    // Subscribe to incoming partner orgs synchronously (no extra DB query needed).
-    for (const orgId of incomingPartnerOrgIds) {
-      subscribePartnerOrg(orgId);
-    }
-
-    // Async: fetch outgoing partner org IDs (orgs that have access to our trees)
-    // and subscribe to them as well.
-    async function subscribeOutgoingPartners() {
+    // One channel for our organisation and every partner: incoming ones from
+    // the tree IDs, outgoing ones (orgs that have access to our trees) read
+    // first, so the channel is subscribed once with all of them rather than
+    // again when they arrive. The read is the load's own, shared with it
+    // (readOutgoingShares), so it is usually answered already.
+    (async () => {
+      const partners = new Set(incomingPartnerOrgIds);
       const ourTreeIds = [...accessibleTreeIds].filter((id) => id.startsWith(`${activeOrgId}::`));
-      if (ourTreeIds.length === 0) return;
-
-      // The same read the load makes, shared with it (readOutgoingShares).
-      const { data, error } = await readOutgoingShares(ourTreeIds);
-
-      if (error) {
-        console.error('useRealtimeSync: failed to fetch outgoing tree shares', error);
-        return;
+      if (ourTreeIds.length > 0) {
+        const { data, error } = await readOutgoingShares(ourTreeIds);
+        if (error) {
+          // Still listen to our own and the incoming partners' changes.
+          console.error('useRealtimeSync: failed to fetch outgoing tree shares', error);
+        } else {
+          for (const row of (data ?? []) as Array<{ organization_id: string }>) {
+            if (row.organization_id !== activeOrgId) partners.add(row.organization_id);
+          }
+        }
       }
-
       if (destroyed) return;
-
-      for (const row of (data ?? []) as Array<{ organization_id: string }>) {
-        const orgId = row.organization_id;
-        // Skip if already subscribed (incoming partner) or is the active org.
-        if (orgId === activeOrgId || incomingPartnerOrgIds.has(orgId)) continue;
-        subscribePartnerOrg(orgId);
-      }
-    }
-
-    subscribeOutgoingPartners();
+      const partnerOrgIds = [...partners].sort();
+      unsubscribers.push(
+        subscribeWithHealth(() => buildOrgChannel(`entity-realtime-${activeOrgId}`, activeOrgId, partnerOrgIds)),
+      );
+    })();
 
     return () => {
       destroyed = true;

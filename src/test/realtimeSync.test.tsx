@@ -125,22 +125,49 @@ describe("live updates", () => {
     expect(byChannel).toMatchSnapshot();
   });
 
+  it("listen to each table once, however many organisations share trees with us", () => {
+    // Every binding is a subscription Realtime checks each change against.
+    // With two partners this was 43: each partner had its own copy of the tables.
+    const perTable = new Map<string, number>();
+    for (const b of bindings) perTable.set(b.table, (perTable.get(b.table) ?? 0) + 1);
+    expect([...perTable].filter(([, n]) => n > 1)).toEqual([]);
+    expect(bindings.length).toBe(21);
+    expect(bindings.find((b) => b.table === "work_items")?.filter).toBe("organization_id=in.(org,out,partner)");
+    expect(bindings.find((b) => b.table === "organization_settings")?.filter).toBe("organization_id=eq.org");
+  });
+
   it("apply each change, or drop it when it is in a tree that cannot be seen", () => {
+    // Keyed by the organisation a change comes from, not by channel: which
+    // channel carries it is the hook's business. Each change goes to every
+    // binding whose filter lets it through, as Realtime would send it.
+    const covers = (filter: string | undefined, org: string) => {
+      const eq = /^organization_id=eq\.(.+)$/.exec(filter ?? "");
+      if (eq) return eq[1] === org;
+      const inList = /^organization_id=in\.\((.*)\)$/.exec(filter ?? "");
+      if (inList) return inList[1].split(",").includes(org);
+      return true;
+    };
     const outcome: Record<string, Record<string, string[]>> = {};
-    for (const b of bindings) {
-      const rows: Array<[string, Payload]> = [
-        ["insert seen", { eventType: "INSERT", new: SEEN, old: {} }],
-        ["update unseen", { eventType: "UPDATE", new: UNSEEN, old: {} }],
-        ["delete unseen", { eventType: "DELETE", new: {}, old: UNSEEN }],
-      ];
-      for (const [what, payload] of rows) {
-        calls = [];
-        b.handler(payload);
-        ((outcome[b.channel] ??= {})[`${b.table}: ${what}`] = [...calls]);
+    for (const org of ["org", "partner", "out"]) {
+      for (const b of bindings) {
+        if (!covers(b.filter, org)) continue;
+        // A deletion carries only the primary key on a table with row-level security.
+        const rows: Array<[string, Payload]> = [
+          ["insert seen", { eventType: "INSERT", new: { ...SEEN, organization_id: org }, old: {} }],
+          ["update unseen", { eventType: "UPDATE", new: { ...UNSEEN, organization_id: org }, old: {} }],
+          ["delete unseen", { eventType: "DELETE", new: {}, old: UNSEEN }],
+        ];
+        for (const [what, payload] of rows) {
+          calls = [];
+          b.handler(payload);
+          const key = `${b.table}: ${what}`;
+          expect((outcome[org] ??= {})[key], `${org} ${key} heard twice`).toBeUndefined();
+          outcome[org][key] = [...calls];
+        }
       }
     }
-    for (const channel of Object.keys(outcome)) {
-      outcome[channel] = Object.fromEntries(Object.entries(outcome[channel]).sort(([a], [b]) => a.localeCompare(b)));
+    for (const org of Object.keys(outcome)) {
+      outcome[org] = Object.fromEntries(Object.entries(outcome[org]).sort(([a], [b]) => a.localeCompare(b)));
     }
     expect(outcome).toMatchSnapshot();
   });
