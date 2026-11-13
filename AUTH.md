@@ -221,32 +221,25 @@ publish functions do.
   `vitest.config.ts` sets `fileParallelism: false`. If those fail, suspect
   machine load before suspecting the code.
 
-## Superusers need a second factor
+## Who is a superuser
 
-> **Not yet effective (2026-11-12).** On this Clerk instance a password-only
-> session carries `fva = [n, n]`, not `[n, -1]` as Clerk's docs say, so the
-> check below lets it through. The fix is a custom session claim for
-> `user.two_factor_enabled`, with the authenticator app enabled in Clerk and
-> enrolled by the superuser; until then a password alone still gives
-> superuser rights.
+`is_superuser()` is the one place that decides whether a user has superuser
+rights. Every policy and function asks it; edge functions ask it as the caller
+through `requireAppUser().isSuperuser`; the app asks `my_superuser_status()`.
+It answers from `profiles.is_superuser`.
 
-`profiles.is_superuser` says an account is a superuser's; `is_superuser()`
-says whether the caller is one *in this session*. For the caller's own
-account it also requires the second number of Clerk's `fva` claim (minutes
-since the second factor was verified) to be 0 or more. Clerk sets it for a
-Google sign-in and for a password plus authenticator-app code, and sets −1 for
-a password alone. A password-only session therefore gets no superuser rights:
-every policy, function and edge function asks `is_superuser()` (edge functions
-through `requireAppUser().isSuperuser`), and the app asks
-`my_superuser_status()`, which also says when the rights are off for want of
-a second factor.
-
-- Asked about *another* account, and with no signed-in user (cron, service
-  role), `is_superuser()` answers from the profile as before.
-- Protecting a superuser — `delete_my_account()` refusing to delete one — reads
-  the profile column, never `is_superuser()`, or a password alone could do it.
-- Never read `profiles.is_superuser` to decide the caller's own rights;
-  `superuserSecondFactor.test.ts` fails if code selects it.
+- Never read `profiles.is_superuser` in app or edge code to decide the
+  caller's own rights; `superuserSecondFactor.test.ts` fails if code selects it.
+  Then a stricter rule needs changing in `is_superuser()` only.
+- Protecting a superuser (`delete_my_account()` refusing to delete one) reads
+  the profile column directly.
+- **Do not use Clerk's `fva` claim to require a second factor.** It was tried
+  on 2026-11-12 and reverted the next day (20261113090000). On this instance a
+  password-only session showed `fva = [n, n]` and passed, while a Google
+  sign-in did not and locked the superuser out. A working rule needs a claim
+  Clerk sets reliably, such as `user.two_factor_enabled` added under
+  "Customize session token", with the authenticator app enabled and enrolled.
+  Test it with a real sign-in of each kind before relying on it.
 
 ## Access
 

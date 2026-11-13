@@ -54,12 +54,19 @@ describe("a superuser signed in without a second factor", () => {
 });
 
 describe("is_superuser in the database", () => {
-  const fn = migration.slice(migration.indexOf("FUNCTION public.is_superuser"), migration.indexOf("FUNCTION public.my_superuser_status"));
-
-  it("asks the caller's own session for a verified second factor", () => {
-    expect(fn).toMatch(/p\.clerk_id IS DISTINCT FROM \(auth\.jwt\(\) ->> 'sub'\)/);
-    expect(fn).toMatch(/jsonb_typeof\(auth\.jwt\(\) -> 'fva' -> 1\) = 'number'/);
-    expect(fn).toMatch(/\(auth\.jwt\(\) -> 'fva' ->> 1\)::numeric >= 0/);
+  it("does not trust Clerk's fva claim", () => {
+    // The rule based on it was reverted (20261113090000): on this instance a
+    // password-only session showed a second factor and a Google sign-in did
+    // not, so it locked the superuser out. The newest definition decides.
+    const dir = join(root, "supabase", "migrations");
+    const newest = readdirSync(dir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort()
+      .map((f) => readFileSync(join(dir, f), "utf8"))
+      .filter((s) => /CREATE OR REPLACE FUNCTION public\.is_superuser\(/.test(s))
+      .pop() ?? "";
+    const fn = newest.slice(newest.indexOf("FUNCTION public.is_superuser"));
+    expect(fn).not.toMatch(/fva/);
   });
 
   it("still refuses to delete a superuser's account in any session", () => {
