@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ShareTreeDialog } from "./ShareTreeDialog";
 import { PublishBacklogDialog } from "./PublicLinkControls";
-import { supabase } from "@/integrations/supabase/client";
 import { useOrgStore } from "@/store/orgStore";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useOrgSettingsStore, usePublicLinksEnabled } from "@/store/orgSettingsStore";
@@ -79,21 +78,9 @@ function useTreeShares(treeIds: string[]) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [treeIdsKey, activeOrgId]);
 
-  useEffect(() => {
-    if (!activeOrgId) return;
-    // Subscribe to realtime changes on the shares table so the icon
-    // updates immediately for all parties (both when a share is added and removed).
-    const channel = supabase
-      .channel(`tree-shares-${activeOrgId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "backlog_tree_shares" },
-        () => { useTreeSharesStore.getState().refresh(); }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [activeOrgId]);
+  // A share added or removed refreshes the icons through Index.tsx's
+  // listener on backlog_tree_shares; a second subscription here cost the
+  // database another one for every open app.
 
   return shares;
 }

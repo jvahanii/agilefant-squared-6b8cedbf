@@ -21,6 +21,7 @@ import { useJiraIssuesStore } from '@/store/jiraIssuesStore';
 import { useScrambledListsStore } from '@/store/scrambledListsStore';
 import { prefetchLoadExtras } from '@/store/loadExtras';
 import { forgetOutgoingShares } from '@/store/supabaseSync';
+import { useTreeSharesStore } from '@/store/treeSharesStore';
 
 const Index = () => {
   const isLoading = useAppStore(s => s.isLoading);
@@ -83,6 +84,8 @@ const Index = () => {
   // Reload data whenever share membership changes so both the tree owner and
   // the newly-shared org see each other's trees and contents immediately.
   // Also reload time entries so partner-org logged time becomes visible.
+  // The only listener on this table: the tree panel's share icons are
+  // refreshed from here too, rather than over a second subscription.
   useEffect(() => {
     if (!activeOrgId) return;
 
@@ -94,6 +97,7 @@ const Index = () => {
         () => {
           // Who our trees are shared with has changed: read it again.
           forgetOutgoingShares();
+          useTreeSharesStore.getState().refresh();
           loadData().then(() => {
             if (isTimeLoggingEnabled(activeOrgId)) {
               loadTimeEntries(activeOrgId);
