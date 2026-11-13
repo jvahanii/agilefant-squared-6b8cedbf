@@ -23,11 +23,14 @@ export interface AppUser {
   id: string;
   email: string | null;
   /**
-   * A superuser in this session. Asked of the database as the caller, so it
-   * follows is_superuser's rule: only when the sign-in had a second factor.
-   * Never read profiles.is_superuser for the caller's own rights.
+   * Whether the caller is a superuser, asked of the database (is_superuser) as
+   * the caller, so any rule it applies holds here too. Never read
+   * profiles.is_superuser for the caller's own rights.
+   *
+   * Asked only when called, and once: most requests come from members, and
+   * each question is a database round trip.
    */
-  isSuperuser: boolean;
+  isSuperuser: () => Promise<boolean>;
 }
 
 /**
@@ -53,10 +56,15 @@ export async function requireAppUser(req: Request): Promise<AppUser> {
 
   // The email is read with the service role because the caller may not be able
   // to select their own profile row under RLS before they have a membership.
-  const [{ data: profile }, { data: superuser }] = await Promise.all([
-    adminClient().from('profiles').select('email').eq('id', userId).maybeSingle(),
-    caller.rpc('is_superuser', { _user_id: userId }),
-  ]);
+  const { data: profile } = await adminClient()
+    .from('profiles')
+    .select('email')
+    .eq('id', userId)
+    .maybeSingle();
 
-  return { id: userId as string, email: profile?.email ?? null, isSuperuser: superuser === true };
+  let superuser: Promise<boolean> | null = null;
+  const isSuperuser = () =>
+    (superuser ??= (async () => (await caller.rpc('is_superuser', { _user_id: userId })).data === true)());
+
+  return { id: userId as string, email: profile?.email ?? null, isSuperuser };
 }

@@ -40,9 +40,8 @@ serve(async (req) => {
     const { organization_id } = await req.json();
     if (!organization_id) throw new Error("organization_id is required");
 
-    // Superusers (signed in with a second factor) may check any org; regular
-    // users must be members
-    if (!user.isSuperuser) {
+    // Superusers may check any org; regular users must be members
+    if (!(await user.isSuperuser())) {
       const { data: membership } = await supabaseClient
         .from("memberships")
         .select("id")

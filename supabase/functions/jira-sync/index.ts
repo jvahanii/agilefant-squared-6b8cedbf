@@ -547,8 +547,7 @@ async function drainThenKick(admin: Admin, conn: Connection, waitMs: number) {
 async function assertMember(admin: Admin, user: AppUser, org: string) {
   const { data } = await admin.from('memberships').select('role').eq('user_id', user.id).eq('organization_id', org).maybeSingle();
   if (data) return data.role as string;
-  // A superuser only in a session signed in with a second factor (is_superuser).
-  if (user.isSuperuser) return 'superuser';
+  if (await user.isSuperuser()) return 'superuser';
   throw new Error('forbidden: not a member of this organization');
 }
 

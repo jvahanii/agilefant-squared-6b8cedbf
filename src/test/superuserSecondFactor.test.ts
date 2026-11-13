@@ -91,5 +91,9 @@ describe("nothing grants superuser rights from the profile alone", () => {
   it("edge functions take it from requireAppUser, which asks the database as the caller", () => {
     const auth = readFileSync(join(root, "supabase", "functions", "_shared", "auth.ts"), "utf8");
     expect(auth).toMatch(/caller\.rpc\('is_superuser', \{ _user_id: userId \}\)/);
+    // Asked only when a function needs it, and at most once: most requests
+    // come from members, and the database is short of memory.
+    expect(auth).toMatch(/superuser \?\?= /);
+    expect(auth).toMatch(/isSuperuser: \(\) => Promise<boolean>/);
   });
 });

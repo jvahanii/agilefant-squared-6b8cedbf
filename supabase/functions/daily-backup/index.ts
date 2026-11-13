@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
   // out of triggering a backup by hand.
   if (!authorized) {
     try {
-      authorized = (await requireAppUser(req)).isSuperuser;
+      authorized = await (await requireAppUser(req)).isSuperuser();
     } catch {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,

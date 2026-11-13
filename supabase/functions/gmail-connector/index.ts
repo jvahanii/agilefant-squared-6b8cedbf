@@ -69,16 +69,16 @@ async function assertOrgMember(userId: string, orgId: string) {
   if (!data) throw new Error('forbidden: not a member of this organization');
 }
 
-/** An owner or admin of the organization, or a superuser in this session. */
+/** An owner or admin of the organization, or a superuser. */
 async function canManageOrg(user: AppUser, orgId: string): Promise<boolean> {
-  if (user.isSuperuser) return true;
   const { data: membership } = await adminClient()
     .from('memberships')
     .select('role')
     .eq('user_id', user.id)
     .eq('organization_id', orgId)
     .maybeSingle();
-  return membership?.role === 'owner' || membership?.role === 'admin';
+  if (membership?.role === 'owner' || membership?.role === 'admin') return true;
+  return user.isSuperuser();
 }
 
 /**
