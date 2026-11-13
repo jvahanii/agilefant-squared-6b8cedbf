@@ -110,12 +110,38 @@ export function loadOrgRows(orgId: string, full: FullReads, rpc: ChangesRpc = de
   return promise;
 }
 
+/**
+ * Waits before asking for the changes again, when asking failed. A failure
+ * almost always means the database is short of memory and swapping; reading
+ * every row then (six requests of 1,000 items) is what it can least afford,
+ * and on 2026-11-13 that full read failed too. A small question a moment
+ * later usually gets an answer.
+ */
+export const CHANGES_RETRY_DELAYS_MS = [1_500, 4_000];
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** The changes since a time, asked again after a pause when asking fails. */
+async function changesWithRetry(rpc: ChangesRpc, orgId: string, since: string): Promise<Changes> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await rpc(orgId, since);
+    } catch (err) {
+      const delay = retryDelays[attempt];
+      if (delay === undefined) throw err;
+      await pause(delay);
+    }
+  }
+}
+
+let retryDelays: readonly number[] = CHANGES_RETRY_DELAYS_MS;
+
 async function refresh(orgId: string, full: FullReads, rpc: ChangesRpc): Promise<OrgRows> {
   const kept = memory.get(orgId) ?? (await readStored(orgId));
   if (kept && Date.now() - Date.parse(kept.snapshotAt) < MIRROR_MAX_AGE_MS) {
     try {
       const since = new Date(Date.parse(kept.snapshotAt) - CHANGES_OVERLAP_MS).toISOString();
-      const changes = await rpc(orgId, since);
+      const changes = await changesWithRetry(rpc, orgId, since);
       const { mirror, changed } = applyChanges(kept, changes);
       if (countsMatch(mirror, changes.counts)) {
         memory.set(orgId, mirror);
@@ -344,4 +370,8 @@ async function writePending(): Promise<void> {
 export const rowMirrorTesting = {
   writePending,
   forgetMemory: () => memory.clear(),
+  /** The pauses between attempts to ask for the changes; tests shorten them. */
+  setRetryDelays: (delays: readonly number[]) => {
+    retryDelays = delays;
+  },
 };

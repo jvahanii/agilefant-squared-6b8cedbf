@@ -3,7 +3,7 @@
  * everything again whenever the merged copy cannot be trusted.
  */
 import { describe, it, expect, vi } from "vitest";
-import { loadOrgRows, rowMirrorTesting, type ChangesRpc, type FullReads, type HyperlinkRow } from "@/store/rowMirror";
+import { CHANGES_RETRY_DELAYS_MS, loadOrgRows, rowMirrorTesting, type ChangesRpc, type FullReads, type HyperlinkRow } from "@/store/rowMirror";
 
 const ORG = "org-1";
 const item = (id: string, title = id) => ({ id, title, organization_id: ORG, parent_id_overrides: {} });
@@ -75,19 +75,47 @@ describe("the organization's rows", () => {
     expect(reads.calls).toBe(2);
   });
 
-  it("are read in full when the changes cannot be had", async () => {
+  it("are read in full when the changes cannot be had, after asking again", async () => {
+    rowMirrorTesting.setRetryDelays([1, 1]);
     let fail = false;
+    let asked = 0;
     const rpc: ChangesRpc = async () => {
+      asked += 1;
       if (fail) throw new Error("timeout");
       return { now: "2026-11-05T10:00:00.000Z", counts: counts(3, 2, 1, 2), ...none };
     };
     const reads = fullReads();
     await loadOrgRows(ORG, reads, rpc);
     fail = true;
+    asked = 0;
     vi.spyOn(console, "warn").mockImplementation(() => {});
     const rows = await loadOrgRows(ORG, reads, rpc);
+    // Three tries at the small question, then the full read (which asks the time once more).
+    expect(asked).toBe(4);
     expect(reads.calls).toBe(2);
     expect(rows.items).toHaveLength(3);
+    rowMirrorTesting.setRetryDelays(CHANGES_RETRY_DELAYS_MS);
+  });
+
+  it("are not read in full when asking again for the changes works", async () => {
+    // A struggling database answers the small question a moment later; reading
+    // every row instead is what it can least afford.
+    rowMirrorTesting.setRetryDelays([1, 1]);
+    let failures = 0;
+    const rpc: ChangesRpc = async () => {
+      if (failures > 0) {
+        failures -= 1;
+        throw new Error("statement timeout");
+      }
+      return { now: "2026-11-05T10:00:00.000Z", counts: counts(3, 2, 1, 2), ...none };
+    };
+    const reads = fullReads();
+    await loadOrgRows(ORG, reads, rpc);
+    failures = 2;
+    const rows = await loadOrgRows(ORG, reads, rpc);
+    expect(reads.calls).toBe(1);
+    expect(rows.items).toHaveLength(3);
+    rowMirrorTesting.setRetryDelays(CHANGES_RETRY_DELAYS_MS);
   });
 
   it("are asked for once by calls made at the same moment", async () => {
