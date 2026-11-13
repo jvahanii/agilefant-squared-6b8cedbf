@@ -4,7 +4,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { BellOff, GripVertical } from "lucide-react";
+import { BellOff, GripVertical, Star } from "lucide-react";
+import { formatDeadline, isDeadlinePassed } from "@/lib/deadlineFormat";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
@@ -49,7 +50,36 @@ function MarkedTitle({ title, ranges }: { title: string; ranges: Ranges }) {
   return <>{parts}</>;
 }
 
-const MATCHED_IN_LABEL: Record<ItemMatch["elsewhere"][number]["in"], string> = {
+/**
+ * A result's stars and deadline, before its name as on its row in the list,
+ * so results can be weighed without opening each. Only what the item has and
+ * its row would show; read-only here, as clicking the result opens the item.
+ */
+function ResultRatingAndDeadline({ rating, deadline }: { rating?: number; deadline?: string }) {
+  if (!rating && !deadline) return null;
+  const passed = isDeadlinePassed(deadline);
+  return (
+    <span className="mr-1.5 inline-flex shrink-0 items-center gap-1.5 align-[-1px]">
+      {rating ? (
+        <span className="inline-flex items-center" role="img" aria-label={`Rated ${rating} of 5`} title={`Rated ${rating} of 5`}>
+          {Array.from({ length: rating }, (_, i) => (
+            <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden="true" />
+          ))}
+        </span>
+      ) : null}
+      {deadline ? (
+        <span
+          className={`text-xs tabular-nums ${passed ? "text-destructive" : "text-muted-foreground"}`}
+          title={`Deadline ${deadline}${passed ? " — passed" : ""}`}
+        >
+          {formatDeadline(deadline)}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+const MATCHED_IN_LABEL:Record<ItemMatch["elsewhere"][number]["in"], string> = {
   key: "Jira key",
   label: "label",
   description: "description",
@@ -217,6 +247,10 @@ function SearchResultItem({
                 title={item.status}
               />
               <div className="min-w-0 flex-1">
+                <ResultRatingAndDeadline
+                  rating={features.ratingsShown ? item.rating : undefined}
+                  deadline={features.deadlines ? item.deadline : undefined}
+                />
                 <span className="text-sm leading-snug break-words inline-flex items-center gap-1">
                   {isSnoozed && (
                     <BellOff
