@@ -29,6 +29,20 @@ describe("loading a part of the app", () => {
     expect(load).toHaveBeenCalledTimes(3);
   });
 
+  it("first fetches again the files the browser cached as something else", async () => {
+    const order: string[] = [];
+    const repair = vi.fn(async (url: string) => { order.push(`repair ${url}`); });
+    const load = vi.fn(async (url: string) => { order.push("load"); return { default: url }; });
+    await importWithRetry(() => Promise.reject(chromeError), load, [0, 0], repair)();
+    expect(order).toEqual(["repair https://agilefant.org/assets/Index-D8-hwuWG.js", "load"]);
+  });
+
+  it("does not look at the cache when nothing fails", async () => {
+    const repair = vi.fn(async () => {});
+    await importWithRetry(async () => ({ default: "ok" }), vi.fn(), [0], repair)();
+    expect(repair).not.toHaveBeenCalled();
+  });
+
   it("does not retry other errors", async () => {
     const load = vi.fn();
     const other = new Error("render failed");

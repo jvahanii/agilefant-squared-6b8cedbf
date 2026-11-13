@@ -8,7 +8,13 @@
  * for again under an address of its own (?retry=…), a few times, with a pause
  * between. Only when that fails too does the error go to the ErrorBoundary,
  * which reloads the page.
+ *
+ * The file asked for again still loads its own imports from their usual
+ * addresses, so before the first retry any of them the browser has cached as
+ * something else (the HTML page Cloudflare gives for a file it lacks) is
+ * fetched again: see repairAssetCache.
  */
+import { repairAssetCache } from "./repairAssetCache";
 
 /** Pauses before each retry: soon, then less soon. */
 export const RETRY_DELAYS_MS = [500, 1_500, 4_000];
@@ -25,6 +31,7 @@ export function importWithRetry<T>(
   factory: () => Promise<T>,
   load: (url: string) => Promise<T> = (url) => import(/* @vite-ignore */ url) as Promise<T>,
   delays: readonly number[] = RETRY_DELAYS_MS,
+  repair: (failedUrl: string) => Promise<unknown> = (failedUrl) => repairAssetCache([failedUrl]),
 ): () => Promise<T> {
   return async () => {
     try {
@@ -33,6 +40,7 @@ export function importWithRetry<T>(
       const url = failedModuleUrl(first);
       if (!url) throw first;
       let last: unknown = first;
+      await repair(url);
       for (const delay of delays) {
         await sleep(delay);
         try {

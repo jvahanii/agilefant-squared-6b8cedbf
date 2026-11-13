@@ -1,6 +1,18 @@
 import { Component, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { reloadFreshPage } from "@/lib/appVersion";
+import { repairAssetCache } from "@/lib/repairAssetCache";
+import { failedModuleUrl } from "@/lib/importWithRetry";
+
+/**
+ * A fresh copy of the page, after fetching again any app file the browser has
+ * cached as something else: a fresh page alone loads those from the cache and
+ * fails the same way (2026-11-13).
+ */
+function repairAndReload(error: Error | null): void {
+  const failed = failedModuleUrl(error);
+  void repairAssetCache(failed ? [failed] : []).finally(() => reloadFreshPage());
+}
 
 interface Props {
   children: ReactNode;
@@ -71,7 +83,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (Date.now() - last < RELOAD_COOLDOWN_MS) return; // already tried; show the UI
     if (!recordAutoReload(ErrorBoundary.RELOAD_KEY)) return;
 
-    reloadFreshPage();
+    repairAndReload(error);
   }
 
   render() {
@@ -99,7 +111,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </p>
           )}
           <Button
-            onClick={() => looksLikeStaleBuild ? reloadFreshPage() : window.location.reload()}
+            onClick={() => looksLikeStaleBuild ? repairAndReload(this.state.error) : window.location.reload()}
           >
             {looksLikeStaleBuild ? "Load fresh version" : "Refresh Page"}
           </Button>
