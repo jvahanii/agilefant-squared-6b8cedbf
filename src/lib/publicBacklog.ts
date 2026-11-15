@@ -219,7 +219,64 @@ export function statusFor(
  * the list's owner gave it. A view of the page only: nothing is saved, and the
  * next visitor sees the owner's order again.
  */
-export type PublicSort = { by: "deadline" | "created"; direction: "asc" | "desc" } | null;
+export type PublicSort = { by: PublicSortBy; direction: "asc" | "desc" } | null;
+
+/**
+ * What a visitor can sort by: a date the page shows, the stars, or — as the
+ * app's "Deadline, then rating ★" — what is due first, and of the things due
+ * the same day the best rated first.
+ */
+export type PublicSortBy = "deadline" | "created" | "rating" | "deadline-rating";
+
+/** One choice in the page's sort menu. */
+export interface PublicSortOption {
+  key: string;
+  label: string;
+  sort: PublicSort;
+}
+
+/**
+ * The page's sort menu: the list's own order, then each order the page has
+ * something to show for — the app's sort menu, less what a visitor cannot
+ * see. Nothing hidden is offered, so no order follows a value the visitor
+ * cannot see.
+ */
+export function publicSortOptions(shown: { deadlines: boolean; created: boolean; ratings: boolean }): PublicSortOption[] {
+  const options: PublicSortOption[] = [{ key: "list", label: "List order", sort: null }];
+  if (shown.ratings) options.push({ key: "rating-desc", label: "Rating ★ best first", sort: { by: "rating", direction: "desc" } });
+  if (shown.deadlines) {
+    options.push({ key: "deadline-asc", label: "Deadline, soonest first", sort: { by: "deadline", direction: "asc" } });
+    options.push({ key: "deadline-desc", label: "Deadline, latest first", sort: { by: "deadline", direction: "desc" } });
+  }
+  if (shown.deadlines && shown.ratings) {
+    options.push({ key: "deadline-rating-asc", label: "Deadline, then rating ★", sort: { by: "deadline-rating", direction: "asc" } });
+  }
+  if (shown.created) {
+    options.push({ key: "created-desc", label: "Created, newest first", sort: { by: "created", direction: "desc" } });
+    options.push({ key: "created-asc", label: "Created, oldest first", sort: { by: "created", direction: "asc" } });
+  }
+  return options;
+}
+
+/** The menu key for a sort: the option it is, so the menu shows it chosen. */
+export function publicSortKey(sort: PublicSort): string {
+  return sort ? `${sort.by}-${sort.direction}` : "list";
+}
+
+/** Whether the page shows what this sort orders by; a sort that is not is ignored. */
+export function publicSortShown(sort: PublicSort, shown: { deadlines: boolean; created: boolean; ratings: boolean }): boolean {
+  if (!sort) return true;
+  switch (sort.by) {
+    case "deadline":
+      return shown.deadlines;
+    case "created":
+      return shown.created;
+    case "rating":
+      return shown.ratings;
+    case "deadline-rating":
+      return shown.deadlines && shown.ratings;
+  }
+}
 
 /**
  * What a click on a column heading asks for next. The first click gives the
@@ -243,16 +300,27 @@ export function nextPublicSort(current: PublicSort, by: "deadline" | "created"):
  */
 export function sortItemNodes(nodes: ItemNode[], sort: PublicSort): ItemNode[] {
   if (!sort) return nodes;
-  const dateOf = (n: ItemNode) => (sort.by === "deadline" ? n.item.deadline : n.item.createdOn) ?? null;
+  // Items without the value last, either way; the rest compared, in the
+  // direction asked for.
+  const by = <T extends string | number>(value: (n: ItemNode) => T | null | undefined, sign: number) =>
+    (a: ItemNode, b: ItemNode): number => {
+      const x = value(a) ?? null;
+      const y = value(b) ?? null;
+      if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
+      return x === y ? 0 : (x < y ? -1 : 1) * sign;
+    };
   const sign = sort.direction === "asc" ? 1 : -1;
+  const deadline = by((n) => n.item.deadline, sign);
+  // Five stars first, unrated last: unrated is not judged, not judged worst.
+  const rating = by((n) => n.item.rating, -1);
+  const compare =
+    sort.by === "deadline" ? deadline
+    : sort.by === "created" ? by((n) => n.item.createdOn, sign)
+    : sort.by === "rating" ? rating
+    : (a: ItemNode, b: ItemNode) => deadline(a, b) || rating(a, b);
   return nodes
     .map((node, index) => ({ node, index }))
-    .sort((a, b) => {
-      const x = dateOf(a.node);
-      const y = dateOf(b.node);
-      if (x === null || y === null) return x === y ? a.index - b.index : x === null ? 1 : -1;
-      return x === y ? a.index - b.index : (x < y ? -1 : 1) * sign;
-    })
+    .sort((a, b) => compare(a.node, b.node) || a.index - b.index)
     .map(({ node }) => node);
 }
 

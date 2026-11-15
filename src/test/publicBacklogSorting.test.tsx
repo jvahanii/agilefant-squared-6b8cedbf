@@ -16,7 +16,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import PublicBacklog from "@/pages/PublicBacklog";
-import { nextPublicSort, sortItemNodes, type ItemNode, type PublishedItem } from "@/lib/publicBacklog";
+import { nextPublicSort, publicSortKey, publicSortOptions, sortItemNodes, type ItemNode, type PublishedItem } from "@/lib/publicBacklog";
 
 const item = (id: string, rank: number, extra: Partial<PublishedItem> = {}): PublishedItem => ({
   id,
@@ -199,5 +199,121 @@ describe("on the page", () => {
     await screen.findByText("Fortum");
     expect(screen.queryByRole("button", { name: /^Deadline/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Created/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("by the stars", () => {
+  const nodes = [
+    node(item("unrated", 1, { deadline: "2026-10-05" })),
+    node(item("three", 2, { rating: 3, deadline: "2026-10-05" })),
+    node(item("five", 3, { rating: 5, deadline: "2026-10-20" })),
+    node(item("four", 4, { rating: 4, deadline: "2026-10-05" })),
+  ];
+
+  it("puts the best rated first and the unrated last", () => {
+    expect(ids(sortItemNodes(nodes, { by: "rating", direction: "desc" }))).toEqual(["five", "four", "three", "unrated"]);
+  });
+
+  it("puts what is due first, and of the things due the same day the best rated first", () => {
+    expect(ids(sortItemNodes(nodes, { by: "deadline-rating", direction: "asc" }))).toEqual(["four", "three", "unrated", "five"]);
+  });
+});
+
+describe("the sort menu's choices", () => {
+  const keys = (shown: { deadlines: boolean; created: boolean; ratings: boolean }) =>
+    publicSortOptions(shown).map((o) => o.key);
+
+  it("are the list's own order and each order the page has something to show for", () => {
+    expect(keys({ deadlines: true, created: true, ratings: true })).toEqual([
+      "list", "rating-desc", "deadline-asc", "deadline-desc", "deadline-rating-asc", "created-desc", "created-asc",
+    ]);
+    expect(keys({ deadlines: false, created: true, ratings: false })).toEqual(["list", "created-desc", "created-asc"]);
+    expect(keys({ deadlines: true, created: false, ratings: false })).toEqual(["list", "deadline-asc", "deadline-desc"]);
+    expect(keys({ deadlines: false, created: false, ratings: false })).toEqual(["list"]);
+  });
+
+  it("name each sort as the menu shows it chosen", () => {
+    for (const option of publicSortOptions({ deadlines: true, created: true, ratings: true })) {
+      expect(publicSortKey(option.sort)).toBe(option.key);
+    }
+  });
+});
+
+describe("the sort menu on the page", () => {
+  const TOKEN = "test-token-000000000000000000000";
+  const data = (over: Record<string, unknown> = {}) => ({
+    kind: "backlog",
+    tree: { id: "t", name: "Jobs" },
+    rootBacklogId: "b",
+    pointsVisible: false,
+    ratingsVisible: true,
+    timeVisible: false,
+    labelsVisible: false,
+    descriptionVisible: false,
+    statusVisible: false,
+    teamsVisible: false,
+    linksVisible: false,
+    deadlinesVisible: true,
+    createdDatesVisible: true,
+    treeMinutes: 0,
+    backlogs: [{ id: "b", name: "Jobs", parentId: null, rank: 0, labelIds: [], minutes: 0 }],
+    statusesByBacklog: {},
+    teams: [],
+    labels: [],
+    items: [
+      item("Fortum", 1, { deadline: "2026-10-20", createdOn: "2026-09-01", rating: 5 }),
+      item("Elisa", 2, { deadline: "2026-10-05", createdOn: "2026-09-20", rating: 3 }),
+      item("Nordea", 3, { createdOn: "2026-08-01" }),
+    ],
+    ...over,
+  });
+  const renderPage = () =>
+    render(
+      <MemoryRouter initialEntries={[`/p/${TOKEN}`]}>
+        <Routes>
+          <Route path="/p/:token" element={<PublicBacklog />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  const rows = () => [...document.querySelectorAll("[data-item-id]")].map((el) => el.getAttribute("data-item-id"));
+  const menu = () => screen.getByRole("combobox", { name: "Sort" }) as HTMLSelectElement;
+  const choices = () => [...menu().options].map((o) => o.textContent);
+
+  beforeEach(() => rpc.mockReset());
+
+  it("sorts the list by the choice, and agrees with the headings", async () => {
+    rpc.mockResolvedValue({ data: data(), error: null });
+    renderPage();
+    await screen.findByText("Fortum");
+    expect(menu().value).toBe("list");
+
+    fireEvent.change(menu(), { target: { value: "created-asc" } });
+    expect(rows()).toEqual(["Nordea", "Fortum", "Elisa"]);
+    expect(screen.getByRole("button", { name: /^Created/ })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.change(menu(), { target: { value: "rating-desc" } });
+    expect(rows()).toEqual(["Fortum", "Elisa", "Nordea"]);
+
+    // A heading clicked shows in the menu.
+    fireEvent.click(screen.getByRole("button", { name: /^Deadline/ }));
+    expect(menu().value).toBe("deadline-asc");
+    expect(rows()).toEqual(["Elisa", "Fortum", "Nordea"]);
+
+    fireEvent.change(menu(), { target: { value: "list" } });
+    expect(rows()).toEqual(["Fortum", "Elisa", "Nordea"]);
+  });
+
+  it("offers only orders by what the page shows", async () => {
+    rpc.mockResolvedValue({ data: data({ ratingsVisible: false, deadlinesVisible: false }), error: null });
+    renderPage();
+    await screen.findByText("Fortum");
+    expect(choices()).toEqual(["List order", "Created, newest first", "Created, oldest first"]);
+  });
+
+  it("is not there when the page shows nothing to sort by", async () => {
+    rpc.mockResolvedValue({ data: data({ ratingsVisible: false, deadlinesVisible: false, createdDatesVisible: false }), error: null });
+    renderPage();
+    await screen.findByText("Fortum");
+    expect(screen.queryByRole("combobox", { name: "Sort" })).not.toBeInTheDocument();
   });
 });

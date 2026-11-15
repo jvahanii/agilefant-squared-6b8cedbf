@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { JobFilterPanel } from "@/components/JobFilterPanel";
 import { passesJobFilters, sourceCounts, storedJobFilters, storeJobFilters, type JobChip } from "@/lib/jobFilters";
 import { useParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpDown, CalendarClock, CalendarRange, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
+import { ArrowDown, ArrowDownAZ, ArrowUp, ArrowUpDown, CalendarClock, CalendarRange, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { PublicAnnouncement } from "@/components/PublicAnnouncement";
@@ -23,6 +23,9 @@ import {
   highlightSegments,
   linkifySegments,
   nextPublicSort,
+  publicSortKey,
+  publicSortOptions,
+  publicSortShown,
   PUBLIC_LOAD_RETRY_MS,
   safeLinkHref,
   scopeMinutes,
@@ -161,10 +164,13 @@ export default function PublicBacklog() {
   const [sort, setSort] = useState<PublicSort>(null);
   const deadlinesShown = !!payload?.deadlinesVisible;
   const createdShown = !!payload?.createdDatesVisible;
-  // A sort by a date the page does not show orders the list by something the
+  const ratingsShown = !!payload?.ratingsVisible;
+  const shownForSort = { deadlines: deadlinesShown, created: createdShown, ratings: ratingsShown };
+  // The sort menu's choices: the list's own order and whatever the page shows.
+  const sortOptions = publicSortOptions(shownForSort);
+  // A sort by something the page does not show orders the list by what the
   // visitor cannot see; it is ignored rather than applied.
-  const activeSort: PublicSort =
-    sort && (sort.by === "deadline" ? deadlinesShown : createdShown) ? sort : null;
+  const activeSort: PublicSort = publicSortShown(sort, shownForSort) ? sort : null;
   const allItems = useMemo(
     () => (payload ? sortItemNodes(buildItemTree(payload.items, scope), activeSort) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -684,6 +690,33 @@ export default function PublicBacklog() {
                         <CalendarRange className="h-3.5 w-3.5" aria-hidden="true" />
                         <span>Date range filter</span>
                       </button>
+                    )}
+                    {/* The app's sort menu, as far as the page shows what it
+                        sorts by. The same choice as the column headings make:
+                        either shows what the other chose. */}
+                    {sortOptions.length > 1 && (
+                      <label
+                        className={`relative flex h-9 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-medium ${
+                          activeSort ? "border-primary/40 bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="Sort the list"
+                      >
+                        <ArrowDownAZ className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span className="sr-only">Sort</span>
+                        <select
+                          aria-label="Sort"
+                          value={publicSortKey(activeSort)}
+                          onChange={(e) => setSort(sortOptions.find((o) => o.key === e.target.value)?.sort ?? null)}
+                          className="cursor-pointer appearance-none bg-transparent pr-4 text-xs font-medium outline-none"
+                        >
+                          {sortOptions.map((option) => (
+                            <option key={option.key} value={option.key}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="pointer-events-none absolute right-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                      </label>
                     )}
                   </div>
                   {(datesOpen || filteringByDate) && (deadlinesShown || createdShown) && (
