@@ -297,7 +297,7 @@ export default function Landing() {
                 {/* Sign in stays in the header; here, a way to look before signing
                     up. A plain link: the try-out starts in a page of its own. */}
                 <a href="/try" className="inline-flex items-center rounded-md border bg-card px-5 py-2.5 font-medium hover:bg-muted">
-                  Try it first, no account
+                  Try it without account
                 </a>
               </div>
             </div>
