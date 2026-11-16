@@ -60,6 +60,7 @@ const UserGuide = lazy(importWithRetry(() => import("./pages/UserGuide")));
 const BellsAndWhistles = lazy(importWithRetry(() => import("./pages/BellsAndWhistles")));
 const PublicBacklog = lazy(importWithRetry(() => import("./pages/PublicBacklog")));
 const Terms = lazy(importWithRetry(() => import("./pages/Terms")));
+const Unsubscribe = lazy(importWithRetry(() => import("./pages/Unsubscribe")));
 const JobAdsGuide = lazy(importWithRetry(() => import("./pages/JobAdsGuide")));
 const JiraGuide = lazy(importWithRetry(() => import("./pages/JiraGuide")));
 const Landing = lazy(importWithRetry(() => import("./pages/Landing")));
@@ -265,6 +266,15 @@ const App = () => (
                 element={
                   <Suspense fallback={null}>
                     <Terms />
+                  </Suspense>
+                }
+              />
+              {/* The link in the day-after-sign-up email, opened signed in or not. */}
+              <Route
+                path="/unsubscribe"
+                element={
+                  <Suspense fallback={null}>
+                    <Unsubscribe />
                   </Suspense>
                 }
               />

@@ -25,3 +25,9 @@ verify_jwt = false
 # requireAppUser inside.
 [functions.jira-sync]
 verify_jwt = false
+
+# Called hourly by pg_cron with the service role key, which the function
+# checks itself, and by unsubscribe links, which carry their own signature
+# and no sign-in.
+[functions.onboarding-reminder]
+verify_jwt = false
