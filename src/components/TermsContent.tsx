@@ -7,6 +7,11 @@
  * text changes with it, and "Last updated" too. The retention periods are
  * enforced by apply_retention() (migration 20261112120000) and account
  * deletion by delete_my_account().
+ *
+ * The day-after-sign-up email (supabase/functions/onboarding-reminder) is not
+ * mentioned because it sends nothing until RESEND_API_KEY is set. Switching it
+ * on means adding Resend to SERVICES (name and email address, and where) and
+ * a sentence on the email and its unsubscribe link.
  */
 import type { ReactNode } from "react";
 
@@ -18,7 +23,6 @@ export const SERVICES: ReadonlyArray<{ name: string; does: string; where: string
   { name: "Supabase", does: "Database, file storage and server functions: where your data is kept", where: "EU (Stockholm, Sweden)" },
   { name: "Clerk", does: "Sign-in: your name, email address, profile picture and how you sign in", where: "USA" },
   { name: "Cloudflare", does: "Delivers the web app to your browser, and counts visits to the public pages", where: "Worldwide network" },
-  { name: "Resend", does: "Sends the getting-started email the day after you sign up: your name and email address", where: "USA" },
   { name: "Stripe", does: "Payments; we never see your card details", where: "USA and EU", when: "if you subscribe" },
   { name: "Google", does: "Gmail import, and signing in with Google", where: "USA", when: "if you use them" },
   { name: "Lovable", does: "Passes the Gmail import's requests to Google", where: "EU (Sweden)", when: "if you use Gmail import" },
@@ -115,12 +119,7 @@ export function TermsContent() {
       <p>
         To provide the service you signed up for (GDPR article 6(1)(b), a contract), and to keep it secure and
         working, with logs and backups, and to see how many visitors go on to sign up (article 6(1)(f), legitimate
-        interests). We do not sell your data or use it for
-        advertising.
-      </p>
-      <p>
-        The day after you sign up we send you one email to help you get started (legitimate interests). It has a
-        link to unsubscribe from it and any like it.
+        interests). We do not sell your data or use it for advertising.
       </p>
       <p>
         What an organisation puts into Agilefant² is the organisation&rsquo;s. For that data we act on its behalf;
