@@ -951,6 +951,38 @@ export type Database = {
           },
         ]
       }
+      onboarding_emails: {
+        Row: {
+          claimed_at: string
+          error: string | null
+          had_items: boolean | null
+          sent_at: string | null
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          error?: string | null
+          had_items?: boolean | null
+          sent_at?: string | null
+          user_id: string
+        }
+        Update: {
+          claimed_at?: string
+          error?: string | null
+          had_items?: boolean | null
+          sent_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_emails_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_backups: {
         Row: {
           created_at: string
@@ -1214,6 +1246,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_superuser: boolean
+          product_emails_off: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -1223,6 +1256,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_superuser?: boolean
+          product_emails_off?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -1232,8 +1266,38 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_superuser?: boolean
+          product_emails_off?: boolean
         }
         Relationships: []
+      }
+      published_backlog_cache: {
+        Row: {
+          built_at: string
+          fingerprint: string
+          payload: Json
+          token: string
+        }
+        Insert: {
+          built_at?: string
+          fingerprint: string
+          payload: Json
+          token: string
+        }
+        Update: {
+          built_at?: string
+          fingerprint?: string
+          payload?: Json
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "published_backlog_cache_token_fkey"
+            columns: ["token"]
+            isOneToOne: true
+            referencedRelation: "published_links"
+            referencedColumns: ["token"]
+          },
+        ]
       }
       published_link_settings: {
         Row: {
@@ -1342,6 +1406,92 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      published_list_copies: {
+        Row: {
+          backlog_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          organization_id: string
+          token: string
+        }
+        Insert: {
+          backlog_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          token: string
+        }
+        Update: {
+          backlog_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "published_list_copies_backlog_id_fkey"
+            columns: ["backlog_id"]
+            isOneToOne: false
+            referencedRelation: "backlogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "published_list_copies_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      published_list_copy_items: {
+        Row: {
+          copy_id: string
+          source_item_id: string
+        }
+        Insert: {
+          copy_id: string
+          source_item_id: string
+        }
+        Update: {
+          copy_id?: string
+          source_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "published_list_copy_items_copy_id_fkey"
+            columns: ["copy_id"]
+            isOneToOne: false
+            referencedRelation: "published_list_copies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      row_deletions: {
+        Row: {
+          deleted_at: string
+          kind: string
+          organization_id: string
+          row_key: string
+        }
+        Insert: {
+          deleted_at?: string
+          kind: string
+          organization_id: string
+          row_key: string
+        }
+        Update: {
+          deleted_at?: string
+          kind?: string
+          organization_id?: string
+          row_key?: string
+        }
+        Relationships: []
       }
       scramble_pins: {
         Row: {
@@ -1599,6 +1749,7 @@ export type Database = {
       work_item_backlog_ranks: {
         Row: {
           backlog_id: string
+          changed_at: string
           created_at: string
           id: string
           organization_id: string
@@ -1607,6 +1758,7 @@ export type Database = {
         }
         Insert: {
           backlog_id: string
+          changed_at?: string
           created_at?: string
           id?: string
           organization_id: string
@@ -1615,6 +1767,7 @@ export type Database = {
         }
         Update: {
           backlog_id?: string
+          changed_at?: string
           created_at?: string
           id?: string
           organization_id?: string
@@ -1634,6 +1787,7 @@ export type Database = {
       work_item_board_ranks: {
         Row: {
           backlog_id: string
+          changed_at: string
           created_at: string
           id: string
           organization_id: string
@@ -1642,6 +1796,7 @@ export type Database = {
         }
         Insert: {
           backlog_id: string
+          changed_at?: string
           created_at?: string
           id?: string
           organization_id: string
@@ -1650,6 +1805,7 @@ export type Database = {
         }
         Update: {
           backlog_id?: string
+          changed_at?: string
           created_at?: string
           id?: string
           organization_id?: string
@@ -1805,6 +1961,7 @@ export type Database = {
       work_item_hyperlinks: {
         Row: {
           alt_text: string
+          changed_at: string
           created_at: string
           id: string
           jira_issue_link: string | null
@@ -1815,6 +1972,7 @@ export type Database = {
         }
         Insert: {
           alt_text?: string
+          changed_at?: string
           created_at?: string
           id?: string
           jira_issue_link?: string | null
@@ -1825,6 +1983,7 @@ export type Database = {
         }
         Update: {
           alt_text?: string
+          changed_at?: string
           created_at?: string
           id?: string
           jira_issue_link?: string | null
@@ -1989,6 +2148,7 @@ export type Database = {
       work_items: {
         Row: {
           backlog_assignments: Json
+          changed_at: string
           created_on: string | null
           deadline: string | null
           description: string | null
@@ -2011,6 +2171,7 @@ export type Database = {
         }
         Insert: {
           backlog_assignments?: Json
+          changed_at?: string
           created_on?: string | null
           deadline?: string | null
           description?: string | null
@@ -2033,6 +2194,7 @@ export type Database = {
         }
         Update: {
           backlog_assignments?: Json
+          changed_at?: string
           created_on?: string | null
           deadline?: string | null
           description?: string | null
@@ -2068,6 +2230,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_new_published_items: {
+        Args: { _copy_id: string; _payload: Json }
+        Returns: number
+      }
+      apply_retention: { Args: never; Returns: Json }
       build_organization_snapshot: { Args: { _org_id: string }; Returns: Json }
       bulk_delete_work_items: { Args: { _ids: string[] }; Returns: number }
       can_view_org_labels: {
@@ -2078,9 +2245,22 @@ export type Database = {
         Args: { _organization_id: string; _pin: string; _user_id: string }
         Returns: undefined
       }
+      claim_onboarding_reminders: {
+        Args: { _limit?: number }
+        Returns: {
+          email: string
+          full_name: string
+          items_added: number
+          user_id: string
+        }[]
+      }
       cleanup_orphaned_users: {
         Args: { p_user_ids: string[] }
         Returns: undefined
+      }
+      copy_published_list: {
+        Args: { _organization_id: string; _token: string }
+        Returns: Json
       }
       create_organization_backup: {
         Args: { _kind?: string; _note?: string; _org_id: string }
@@ -2093,8 +2273,17 @@ export type Database = {
       current_user_id: { Args: never; Returns: string }
       db_io_report: { Args: { _hours?: number }; Returns: Json }
       delete_my_account: { Args: never; Returns: Json }
-      my_superuser_status: { Args: never; Returns: Json }
+      delete_organization_leftovers: {
+        Args: { _org_id?: string }
+        Returns: number
+      }
+      get_load_extras: { Args: { _org_id: string }; Returns: Json }
+      get_org_changes: {
+        Args: { _org_id: string; _since: string }
+        Returns: Json
+      }
       get_published_backlog: { Args: { _token: string }; Returns: Json }
+      get_published_backlog_last: { Args: { _token: string }; Returns: Json }
       get_published_backlog_unchecked: {
         Args: { _token: string }
         Returns: Json
@@ -2110,6 +2299,15 @@ export type Database = {
           is_owner: boolean
           org_id: string
           org_name: string
+        }[]
+      }
+      get_trees_sharing_info: {
+        Args: { _exclude_org_id: string; _tree_ids: string[] }
+        Returns: {
+          is_owner: boolean
+          org_id: string
+          org_name: string
+          tree_id: string
         }[]
       }
       get_user_memberships: {
@@ -2227,6 +2425,7 @@ export type Database = {
         Args: { _entry_ids: string[]; _target_id: string; _target_kind: string }
         Returns: number
       }
+      my_superuser_status: { Args: never; Returns: Json }
       public_links_enabled_for_tree: {
         Args: { _tree_id: string }
         Returns: boolean
@@ -2237,6 +2436,10 @@ export type Database = {
       }
       publish_backlog_link_unchecked: {
         Args: { _backlog_id?: string; _tree_id: string }
+        Returns: string
+      }
+      published_backlog_fingerprint: {
+        Args: { _token: string }
         Returns: string
       }
       redeem_invite: { Args: { _token: string }; Returns: Json }
@@ -2326,6 +2529,10 @@ export type Database = {
           organizations: number
           time_entries: number
         }[]
+      }
+      sync_published_list_copies: {
+        Args: { _organization_id: string }
+        Returns: number
       }
       take_db_io_snapshot: { Args: never; Returns: undefined }
       unpublish_backlog_link: {
