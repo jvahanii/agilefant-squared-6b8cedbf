@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { claimSync, copyPublishedList, syncPublishedListCopies, takeListToCopy } from "@/lib/listCopy";
 import { useAppStore } from "@/store/appStore";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 
 /** Opens a list once the reload has brought it in. */
 function openWhenLoaded(backlogId: string, treeId: string) {
@@ -35,7 +36,8 @@ export function usePublishedListCopies(orgId: string | null, loaded: boolean): v
       copyPublishedList(token, orgId)
         .then(async (res) => {
           if (cancelled) return;
-          await useAppStore.getState().loadFromSupabase();
+          // The copy switches ratings on, and deadlines when the list has them.
+          await Promise.all([useAppStore.getState().loadFromSupabase(), useOrgSettingsStore.getState().loadSettings(orgId)]);
           openWhenLoaded(res.backlogId, res.treeId);
           toast({
             title: res.existing ? "You already have this list" : "The list is in your account",

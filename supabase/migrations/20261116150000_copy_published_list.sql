@@ -179,20 +179,23 @@ BEGIN
   VALUES (_tree, _tree_name,
           coalesce((SELECT max(t.rank) + 1 FROM public.backlog_trees t WHERE t.organization_id = _organization_id), 0),
           _organization_id);
-  INSERT INTO public.backlogs (id, name, parent_id, tree_id, rank, organization_id)
-  VALUES (_backlog, _list_name, NULL, _tree, 0, _organization_id);
+  -- The list can be rated: stars are how a job seeker sorts the ads worth
+  -- applying for from the rest.
+  INSERT INTO public.backlogs (id, name, parent_id, tree_id, rank, organization_id, ratings_enabled)
+  VALUES (_backlog, _list_name, NULL, _tree, 0, _organization_id, true);
 
   INSERT INTO public.published_list_copies (token, organization_id, backlog_id, created_by)
   VALUES (_token, _organization_id, _backlog, _uid)
   RETURNING * INTO _copy;
 
-  -- Deadlines copied are deadlines shown: a job ad's deadline is half its
-  -- point, and a new organisation has the feature off.
-  IF coalesce((_payload ->> 'deadlinesVisible')::boolean, false) THEN
-    INSERT INTO public.organization_settings (organization_id, deadlines_enabled)
-    VALUES (_organization_id, true)
-    ON CONFLICT (organization_id) DO UPDATE SET deadlines_enabled = true;
-  END IF;
+  -- Ratings on, so the list's stars show; and deadlines copied are deadlines
+  -- shown, as a job ad's deadline is half its point. A new organisation has
+  -- both off. Neither is ever turned off here.
+  INSERT INTO public.organization_settings (organization_id, ratings_enabled, deadlines_enabled)
+  VALUES (_organization_id, true, coalesce((_payload ->> 'deadlinesVisible')::boolean, false))
+  ON CONFLICT (organization_id) DO UPDATE
+    SET ratings_enabled = true,
+        deadlines_enabled = public.organization_settings.deadlines_enabled OR EXCLUDED.deadlines_enabled;
 
   _added := public.add_new_published_items(_copy.id, _payload);
   RETURN jsonb_build_object('treeId', _tree, 'backlogId', _backlog, 'added', _added, 'existing', false);

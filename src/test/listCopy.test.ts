@@ -18,6 +18,7 @@ vi.mock("@/hooks/use-toast", () => ({ toast: (...args: unknown[]) => toast(...ar
 import { claimSync, PENDING_COPY_HOURS, PENDING_COPY_KEY, rememberListToCopy, SYNC_EVERY_MS, takeListToCopy } from "@/lib/listCopy";
 import { usePublishedListCopies } from "@/hooks/usePublishedListCopies";
 import { useAppStore } from "@/store/appStore";
+import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 
 const TOKEN = "test-token-000000000000000000000";
 const ORG = "org-1";
@@ -59,9 +60,12 @@ describe("the check for new items", () => {
 
 describe("in the app", () => {
   const reload = vi.fn(async () => {});
+  const loadSettings = vi.fn(async () => {});
   beforeEach(() => {
     reload.mockClear();
+    loadSettings.mockClear();
     useAppStore.setState({ loadFromSupabase: reload, backlogs: {} } as never);
+    useOrgSettingsStore.setState({ loadSettings } as never);
   });
 
   it("makes the copy asked for, reloads, and says how many ads came", async () => {
@@ -71,6 +75,8 @@ describe("in the app", () => {
     await waitFor(() => expect(toast).toHaveBeenCalled());
     expect(rpc).toHaveBeenCalledWith("copy_published_list", { _token: TOKEN, _organization_id: ORG });
     expect(reload).toHaveBeenCalled();
+    // Ratings, and deadlines when copied, were switched on: shown without a reload.
+    expect(loadSettings).toHaveBeenCalledWith(ORG);
     expect(toast.mock.calls[0][0]).toMatchObject({ title: "The list is in your account" });
     expect(toast.mock.calls[0][0].description).toMatch(/^12 ads copied\. New ads are added/);
   });
@@ -123,6 +129,12 @@ describe("the database functions", () => {
     expect(code).not.toMatch(/UPDATE\s+public\.work_items/i);
     expect(code).not.toMatch(/ON CONFLICT[^;]*DO UPDATE[^;]*work_items/i);
     expect(code).toMatch(/INSERT INTO public\.work_items/);
+  });
+
+  it("switch ratings on for the copied list and its organisation, and never off", () => {
+    expect(code).toContain("VALUES (_backlog, _list_name, NULL, _tree, 0, _organization_id, true)");
+    expect(code).toMatch(/SET ratings_enabled = true/);
+    expect(code).not.toMatch(/ratings_enabled = false|deadlines_enabled = false/);
   });
 
   it("copy only what the link shows, through get_published_backlog()", () => {
