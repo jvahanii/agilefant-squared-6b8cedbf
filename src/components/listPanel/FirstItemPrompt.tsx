@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { itemLines, MAX_PASTED_ITEMS } from "./itemLines";
 import { OrgNameLine } from "./OrgNameLine";
+import { StartChoice } from "./StartChoice";
+import type { StartKind } from "./startPresets";
 
 /**
  * Shown in place of the empty list while the organisation has no items at
@@ -20,6 +22,7 @@ export function FirstItemPrompt({
   treeName,
   onAdd,
   org,
+  start,
 }: {
   /** The list the items go into. */
   listName: string;
@@ -27,6 +30,8 @@ export function FirstItemPrompt({
   onAdd: (titles: string[]) => void;
   /** The organisation's name, with a way to change it for those allowed to. */
   org?: { name: string; onRename: (name: string) => Promise<void> };
+  /** Who it is for, while the starter lists are untouched and the person may change them. */
+  start?: { kind: StartKind; onChoose: (kind: StartKind) => Promise<void> };
 }) {
   const [text, setText] = useState("");
   const lines = itemLines(text);
@@ -94,6 +99,7 @@ export function FirstItemPrompt({
           You can rename the lists, nest them, add more trees, and switch on extras such as story points in your
           organisation's settings.
         </p>
+        {start && <StartChoice kind={start.kind} onChoose={start.onChoose} />}
         {org && <OrgNameLine name={org.name} onRename={org.onRename} />}
       </section>
     </div>
