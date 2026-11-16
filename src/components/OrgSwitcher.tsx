@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { fetchIsSuperuser } from "@/lib/superuser";
+import { isDemoMode } from "@/lib/demoMode";
 
 /** Why a superuser sees no superuser tools, and how to get them back. */
 export const SECOND_FACTOR_NOTICE =
@@ -91,25 +92,31 @@ export function OrgSwitcher() {
               <span className="ml-auto text-xs text-muted-foreground">{m.role}</span>
             </DropdownMenuItem>
           ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setShowCreate(true)}>
-            <Plus className="w-4 h-4 mr-2" /> New Organization
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate("/settings/team")}>
-            <Settings className="w-4 h-4 mr-2" /> Org Settings
-          </DropdownMenuItem>
-          {isSuperuser && (
+          {/* The try-out (/try) has no account behind it: creating an
+              organisation, its settings and signing out lead nowhere there. */}
+          {!isDemoMode() && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate("/manager")}>
-                <Shield className="w-4 h-4 mr-2" /> Manager Screen
+              <DropdownMenuItem onClick={() => setShowCreate(true)}>
+                <Plus className="w-4 h-4 mr-2" /> New Organization
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/settings/team")}>
+                <Settings className="w-4 h-4 mr-2" /> Org Settings
+              </DropdownMenuItem>
+              {isSuperuser && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/manager")}>
+                    <Shield className="w-4 h-4 mr-2" /> Manager Screen
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={signOut} className="text-destructive">
+                <LogOut className="w-4 h-4 mr-2" /> Sign Out
               </DropdownMenuItem>
             </>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={signOut} className="text-destructive">
-            <LogOut className="w-4 h-4 mr-2" /> Sign Out
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
