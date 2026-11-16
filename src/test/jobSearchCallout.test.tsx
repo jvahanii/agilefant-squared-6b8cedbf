@@ -66,7 +66,7 @@ describe("the job-search call to action", () => {
     renderPage(true);
     await screen.findByRole("heading", { level: 1, name: "Open jobs" });
     expect(callout()).toBeTruthy();
-    expect(screen.getByText(/No Gmail connection needed/)).toBeTruthy();
+    expect(screen.getByText(/Make your own prioritised list of the ones you are really into. Free forever./)).toBeTruthy();
     expect(screen.getByRole("link", { name: /What is Agilefant/ }).getAttribute("href")).toBe("/");
   });
 

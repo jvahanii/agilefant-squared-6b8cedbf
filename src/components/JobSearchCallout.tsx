@@ -53,10 +53,9 @@ export function JobSearchCallout({ token }: { token: string }) {
           Job hunting among this many ads? Manage it properly.
         </h2>
         <p className="text-muted-foreground">
-          Agilefant is just the right tool for it. Copy this list into your own account and it keeps itself up to
-          date: new ads are added as they appear here, and the ads you have already marked, edited or applied for
-          stay as they are. No Gmail connection needed. Then see what closes soon and mark where each application
-          stands. Free, with no time limit.
+          Agilefant is just the right tool for that, too. Copy this list into your own account and it keeps itself
+          up to date: new ads are added as they appear here, and the ads you have already marked, edited or applied
+          for stay as they are. Make your own prioritised list of the ones you are really into. Free forever.
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Button type="button" size="sm" onClick={copy}>
