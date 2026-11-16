@@ -51,7 +51,7 @@ export function FirstItemPrompt({
             Add your first item
           </h2>
           <p className="text-sm text-muted-foreground">
-            Anything you want to keep track of: a task, an idea, a job ad. Type it and press Enter.
+            Anything you want to keep track of: a task, an idea. Type it and press Enter.
           </p>
         </div>
         <form

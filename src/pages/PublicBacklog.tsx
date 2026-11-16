@@ -1099,13 +1099,16 @@ function ItemRow({
                 aria-expanded={showDetails}
                 className="inline-flex max-w-full items-start gap-1 text-left text-sm hover:underline underline-offset-4"
               >
-                <span className="min-w-0 break-words">
+                {/* overflow-wrap: anywhere, not break-words: only it lets a long
+                    word ("JÄRJESTELMÄ/AUTOMAATIOTESTAAJA") shrink inside a flex
+                    row, which otherwise pushed a phone's page sideways. */}
+                <span className="min-w-0 [overflow-wrap:anywhere]">
                   <IconizedTitle title={item.title} renderText={markText} />
                 </span>
                 <FileText className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-label="Has more to read" />
               </button>
             ) : (
-              <span className="text-sm break-words">
+              <span className="min-w-0 max-w-full text-sm [overflow-wrap:anywhere]">
                 <IconizedTitle title={item.title} renderText={markText} />
               </span>
             )}

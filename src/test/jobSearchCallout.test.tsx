@@ -96,6 +96,12 @@ describe("the job-search call to action", () => {
     expect(callout()).toBeNull();
   });
 
+  it("long words in titles may break, so a phone's page does not scroll sideways", async () => {
+    renderPage(true);
+    const title = await screen.findByText("Acme – Product Owner");
+    expect(title.closest("span[class*='overflow-wrap:anywhere']")).toBeTruthy();
+  });
+
   it("is used by no other page", () => {
     const pages = readdirSync(join(process.cwd(), "src/pages"));
     const using = pages.filter((f) => readFileSync(join(process.cwd(), "src/pages", f), "utf8").includes("JobSearchCallout"));
