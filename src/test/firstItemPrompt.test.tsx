@@ -7,16 +7,32 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
+// What the next organisations update answers, and what it was asked.
+const db = vi.hoisted(() => ({
+  orgUpdate: { data: [] as unknown[], error: null as unknown },
+  updates: [] as Array<{ table: string; values: unknown }>,
+}));
+
 vi.mock("@/integrations/supabase/client", () => {
-  const builder: Record<string, unknown> = {};
-  for (const m of ["select", "eq", "in", "order", "range", "limit", "gte", "upsert", "insert", "update", "delete", "maybeSingle", "single"]) {
-    builder[m] = () => builder;
-  }
-  builder.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(ok);
+  const builder = (table: string) => {
+    const b: Record<string, unknown> = {};
+    let updating = false;
+    for (const m of ["select", "eq", "in", "order", "range", "limit", "gte", "upsert", "insert", "delete", "maybeSingle", "single"]) {
+      b[m] = () => b;
+    }
+    b.update = (values: unknown) => {
+      updating = true;
+      db.updates.push({ table, values });
+      return b;
+    };
+    b.then = (ok: (v: unknown) => unknown) =>
+      Promise.resolve(table === "organizations" && updating ? db.orgUpdate : { data: [], error: null }).then(ok);
+    return b;
+  };
   const channel = { on: () => channel, subscribe: () => channel, unsubscribe: () => {} };
   return {
     supabase: {
-      from: () => builder,
+      from: (table: string) => builder(table),
       rpc: () => Promise.resolve({ data: null, error: null }),
       channel: () => channel,
       removeChannel: () => {},
@@ -41,8 +57,12 @@ const starter = scopeMockDataToOrganization(ORG, structuredClone(starterContent)
 const TREE = Object.keys(starter.backlogTrees)[0];
 const [NOW, LATER] = starter.backlogTrees[TREE].rootBacklogIds;
 
-function seed(state: Record<string, unknown> = {}) {
-  useOrgStore.setState({ activeOrgId: ORG });
+function seed(state: Record<string, unknown> = {}, role: "owner" | "admin" | "member" = "owner") {
+  useOrgStore.setState({
+    activeOrgId: ORG,
+    roleOverride: null,
+    memberships: [{ organization_id: ORG, organization_name: "anna@example.com", organization_slug: "anna", role }],
+  });
   useAppStore.setState({
     organizationId: ORG,
     workItems: {},
@@ -259,6 +279,55 @@ describe("the getting-started steps", () => {
     renderPanel();
     expect(screen.getByRole("heading", { name: "That's the basics" })).toBeTruthy();
     expect(screen.getByText("3 of 3 done")).toBeTruthy();
+  });
+});
+
+describe("naming the organisation from the first-item box", () => {
+  beforeEach(() => {
+    db.updates.length = 0;
+    db.orgUpdate = { data: [{ id: ORG }], error: null };
+  });
+
+  const rename = async (name: string) => {
+    fireEvent.click(screen.getByRole("button", { name: "Rename it" }));
+    const input = screen.getByRole("textbox", { name: "Organisation name" });
+    fireEvent.change(input, { target: { value: name } });
+    await act(async () => {
+      fireEvent.submit(input.closest("form")!);
+    });
+  };
+
+  it("shows the name it was given and renames it, for the owner", async () => {
+    seed();
+    renderPanel();
+    expect(screen.getByText("anna@example.com")).toBeTruthy();
+    await rename("  Kick-off team  ");
+    expect(db.updates).toEqual([{ table: "organizations", values: { name: "Kick-off team" } }]);
+    expect(useOrgStore.getState().memberships[0].organization_name).toBe("Kick-off team");
+    expect(screen.getByText("Kick-off team")).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Organisation name" })).toBeNull();
+  });
+
+  it("says so when the rename is refused, and keeps the old name", async () => {
+    seed();
+    db.orgUpdate = { data: [], error: null };
+    renderPanel();
+    await rename("Mine");
+    expect(screen.getByRole("alert").textContent).toMatch(/owner or admin/);
+    expect(useOrgStore.getState().memberships[0].organization_name).toBe("anna@example.com");
+  });
+
+  it("is not offered to a plain member", () => {
+    seed({}, "member");
+    renderPanel();
+    expect(screen.getByRole("heading", { name: "Add your first item" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Rename it" })).toBeNull();
+  });
+
+  it("leaves the first-item box focused", () => {
+    seed();
+    renderPanel();
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "First item" }));
   });
 });
 

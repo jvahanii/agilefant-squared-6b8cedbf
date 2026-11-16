@@ -136,6 +136,9 @@ export function WorkItemTreePanel() {
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
+  const activeMembership = useOrgStore((s) => s.memberships.find((m) => m.organization_id === s.activeOrgId) ?? null);
+  const effectiveRole = useOrgStore((s) => s.roleOverride) ?? activeMembership?.role;
+  const renameOrganization = useOrgStore((s) => s.renameOrganization);
   const timeLoggingVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.timeLoggingEnabled ?? false);
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
   const boardsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.boardsEnabled ?? false);
@@ -164,6 +167,11 @@ export function WorkItemTreePanel() {
       listName={backlogs[firstItemPlace.backlogId]?.name ?? "this list"}
       treeName={backlogTrees[firstItemPlace.treeId]?.name}
       onAdd={addFirstItem}
+      org={
+        activeMembership && (effectiveRole === "owner" || effectiveRole === "admin")
+          ? { name: activeMembership.organization_name, onRename: (name) => renameOrganization(activeMembership.organization_id, name) }
+          : undefined
+      }
     />
   ) : null;
 

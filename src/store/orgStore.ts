@@ -34,6 +34,8 @@ interface OrgState {
   loadMemberships: (userId: string) => Promise<void>;
   setActiveOrg: (orgId: string, orgName?: string) => void;
   createOrganization: (name: string, slug: string, userId: string) => Promise<string>;
+  /** A new name for an organisation, for its owners and admins. The slug stays. */
+  renameOrganization: (orgId: string, name: string) => Promise<void>;
   getActiveOrg: () => Membership | null;
   setRoleOverride: (role: 'owner' | 'admin' | 'member' | null) => void;
 }
@@ -169,6 +171,25 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
   setActiveOrg: (orgId: string, orgName?: string) => {
     localStorage.setItem('activeOrgId', orgId);
     set({ activeOrgId: orgId, activeOrgName: orgName ?? null });
+  },
+
+  renameOrganization: async (orgId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error('A name is needed.');
+    const { data, error } = await supabase
+      .from('organizations')
+      .update({ name: trimmed })
+      .eq('id', orgId)
+      .select('id');
+    if (error) throw error;
+    // Row-level security refuses a member silently: nothing is updated.
+    if (!data || data.length === 0) throw new Error('Only an owner or admin can rename the organisation.');
+    const memberships = get().memberships.map((m) =>
+      m.organization_id === orgId ? { ...m, organization_name: trimmed } : m,
+    );
+    set({ memberships, ...(get().activeOrgId === orgId ? { activeOrgName: trimmed } : {}) });
+    const cached = readCachedMemberships();
+    if (cached) writeCachedMemberships(cached.userId, memberships);
   },
 
   createOrganization: async (name: string, slug: string, userId: string) => {
