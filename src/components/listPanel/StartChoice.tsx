@@ -28,7 +28,7 @@ export function StartChoice({ kind, onChoose }: { kind: StartKind; onChoose: (ki
   return (
     <fieldset className="space-y-2" aria-busy={busy}>
       <legend className="mb-2 text-sm font-medium">Who is it for?</legend>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2">
         {OPTIONS.map((o) => (
           <label
             key={o.kind}

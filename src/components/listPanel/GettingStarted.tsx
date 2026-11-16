@@ -2,6 +2,9 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, Circle, X } from "lucide-react";
 import type { WorkItem } from "@/types/models";
 import { closeSteps, gettingStartedSteps, stepsClosed, type StepKey } from "./startSteps";
+import { OrgNameLine } from "./OrgNameLine";
+import { StartChoice } from "./StartChoice";
+import type { StartKind } from "./startPresets";
 
 const TEXT: Record<StepKey, { title: string; how: string }> = {
   more: {
@@ -24,8 +27,24 @@ const TEXT: Record<StepKey, { title: string; how: string }> = {
  * answered the person was on their own, and of 34 people who signed up from
  * August to mid-November 2026 only 4 came back after their first day. The
  * steps tick off as they are done and the panel stays until closed.
+ *
+ * It also carries "Who is it for?" and the organisation's name, which
+ * otherwise live under the first-item box: someone arriving from the try-out
+ * brings items along, so that box is never shown to them (2026-11-16).
  */
-export function GettingStarted({ orgId, workItems }: { orgId: string; workItems: Record<string, WorkItem> }) {
+export function GettingStarted({
+  orgId,
+  workItems,
+  start,
+  org,
+}: {
+  orgId: string;
+  workItems: Record<string, WorkItem>;
+  /** Who it is for, while the starter lists are untouched and the person may change them. */
+  start?: { kind: StartKind; onChoose: (kind: StartKind) => Promise<void> };
+  /** The organisation's name, for those who may rename it. */
+  org?: { name: string; onRename: (name: string) => Promise<void> };
+}) {
   const steps = useMemo(() => gettingStartedSteps(Object.values(workItems)), [workItems]);
   const [closed, setClosed] = useState(() => stepsClosed(orgId));
   if (!steps || closed) return null;
@@ -36,7 +55,7 @@ export function GettingStarted({ orgId, workItems }: { orgId: string; workItems:
   return (
     <section
       aria-labelledby="getting-started-heading"
-      className="shrink-0 border-t bg-muted/40 px-3 py-2.5"
+      className="max-h-[50%] shrink-0 overflow-y-auto border-t bg-muted/40 px-3 py-2.5"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center gap-2">
@@ -58,6 +77,13 @@ export function GettingStarted({ orgId, workItems }: { orgId: string; workItems:
           <X className="w-4 h-4" />
         </button>
       </div>
+      {/* First: one-time choices, worth making before the lists fill up. */}
+      {(start || org) && (
+        <div className="mt-2 space-y-2 border-b pb-2.5">
+          {start && <StartChoice kind={start.kind} onChoose={start.onChoose} />}
+          {org && <OrgNameLine name={org.name} onRename={org.onRename} />}
+        </div>
+      )}
       <ol className="mt-1.5 space-y-1.5">
         {steps.map((s) => (
           <li key={s.key} className="flex items-start gap-2 text-sm">

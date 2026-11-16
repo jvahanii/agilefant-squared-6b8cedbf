@@ -33,7 +33,7 @@ import { FirstItemPrompt } from "./listPanel/FirstItemPrompt";
 import { GettingStarted } from "./listPanel/GettingStarted";
 import { firstList } from "./listPanel/firstList";
 import { useOrgIsEmpty } from "./listPanel/useOrgIsEmpty";
-import { applyStart, starterShape } from "./listPanel/startPresets";
+import { applyStart, starterShape, type StartKind } from "./listPanel/startPresets";
 import { countNodes, takeTriedList } from "@/lib/tryList";
 import { toast } from "@/hooks/use-toast";
 import { ListHeader, ResultsHeader } from "./listPanel/ListHeader";
@@ -187,23 +187,26 @@ export function WorkItemTreePanel() {
   }, [placeKey]);
 
   const canManageOrg = !!activeMembership && (effectiveRole === "owner" || effectiveRole === "admin");
-  const starter = firstItemPlace && canManageOrg && activeOrgId ? starterShape(backlogTrees, backlogs) : null;
+  // Asked while the starter lists are untouched: under the first-item box, or,
+  // once there are items (a list brought from the try-out arrives before the
+  // box is ever seen), in the getting-started panel.
+  const starter = canManageOrg && activeOrgId ? starterShape(backlogTrees, backlogs) : null;
+  const startProp =
+    starter && activeOrgId
+      ? { kind: starter.kind, onChoose: (kind: StartKind) => applyStart(kind, starter, activeOrgId) }
+      : undefined;
+  const orgProp =
+    activeMembership && canManageOrg
+      ? { name: activeMembership.organization_name, onRename: (name: string) => renameOrganization(activeMembership.organization_id, name) }
+      : undefined;
 
   const firstItemPrompt = firstItemPlace ? (
     <FirstItemPrompt
       listName={backlogs[firstItemPlace.backlogId]?.name ?? "this list"}
       treeName={backlogTrees[firstItemPlace.treeId]?.name}
       onAdd={addFirstItem}
-      start={
-        starter && activeOrgId
-          ? { kind: starter.kind, onChoose: (kind) => applyStart(kind, starter, activeOrgId) }
-          : undefined
-      }
-      org={
-        activeMembership && canManageOrg
-          ? { name: activeMembership.organization_name, onRename: (name) => renameOrganization(activeMembership.organization_id, name) }
-          : undefined
-      }
+      start={startProp}
+      org={orgProp}
     />
   ) : null;
 
@@ -766,7 +769,9 @@ export function WorkItemTreePanel() {
                 </div>
               </div>
             )}
-            {activeOrgId && <GettingStarted key={activeOrgId} orgId={activeOrgId} workItems={workItems} />}
+            {activeOrgId && (
+              <GettingStarted key={activeOrgId} orgId={activeOrgId} workItems={workItems} start={startProp} org={orgProp} />
+            )}
           </div>
         </WorkItemRootDropZone>
         )}

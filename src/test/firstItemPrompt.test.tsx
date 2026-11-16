@@ -4,7 +4,7 @@
  * (2026-11-16: 15 of 34 new users never changed anything).
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor, within } from "@testing-library/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { MemoryRouter } from "react-router-dom";
 
@@ -500,5 +500,37 @@ describe("who it is for", () => {
     expect(starterShape(backlogTrees, nested)).toBeNull();
     const renamedTree = { [TREE]: { ...backlogTrees[TREE], name: "Home" } };
     expect(starterShape(renamedTree, backlogs)).toBeNull();
+  });
+});
+
+describe("arriving from the try-out", () => {
+  const tried: TryItem[] = [{ id: "1", title: "From the try-out", depth: 0, done: false }];
+  beforeEach(() => {
+    localStorage.clear();
+    seed({ changeLog: [], undoStack: [], redoStack: [] });
+    useOrgSettingsStore.setState({ settings: {} } as never);
+  });
+
+  it("still asks who it is for and offers the rename, in the getting-started panel", async () => {
+    saveTryList(tried);
+    renderPanel();
+    expect(screen.queryByRole("heading", { name: "Add your first item" })).toBeNull();
+    const panel = screen.getByRole("region", { name: /Getting started|That's the basics/ });
+    expect(within(panel).getByRole("group", { name: "Who is it for?" })).toBeTruthy();
+    expect(within(panel).getByText(/Your organisation is called/)).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(within(panel).getByRole("radio", { name: /A team/ }));
+    });
+    const { backlogTrees, backlogs } = useAppStore.getState();
+    expect([backlogTrees[TREE].name, backlogs[NOW].name, backlogs[LATER].name]).toEqual(["Team", "Backlog", "This sprint"]);
+    expect(Object.values(useAppStore.getState().workItems).map((i) => i.title)).toEqual(["From the try-out"]);
+  });
+
+  it("offers neither to a member", () => {
+    saveTryList(tried);
+    seed({}, "member");
+    renderPanel();
+    expect(screen.queryByRole("group", { name: "Who is it for?" })).toBeNull();
+    expect(screen.queryByText(/Your organisation is called/)).toBeNull();
   });
 });
