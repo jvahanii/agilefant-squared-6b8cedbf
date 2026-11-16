@@ -29,6 +29,8 @@ import { LabelFilterContext, RunningNumberContext, SharedDataContext, scrollWork
 import { InlineWorkItemInput } from "./workItemRow/InlineWorkItemInput";
 import { WorkItemNode } from "./workItemRow/WorkItemRow";
 import { FilterBar } from "./listPanel/FilterBar";
+import { FirstItemPrompt } from "./listPanel/FirstItemPrompt";
+import { firstList } from "./listPanel/firstList";
 import { ListHeader, ResultsHeader } from "./listPanel/ListHeader";
 import { FilterResultsList, SearchResultsList } from "./listPanel/SearchResults";
 import { useItemSearch, type SearchResult } from "./listPanel/useItemSearch";
@@ -136,6 +138,29 @@ export function WorkItemTreePanel() {
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
   const boardsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.boardsEnabled ?? false);
   const isMobile = useIsMobile();
+  const isLoading = useAppStore((s) => s.isLoading);
+
+  // No items at all once everything has loaded: a new account, or one emptied
+  // since. The panel then asks for a first item, for the selected list or,
+  // with none selected, the first list of the first tree.
+  const orgIsEmpty = !isLoading && !workItemsLoading && !workItemsRefreshing && Object.keys(workItems).length === 0;
+  const firstItemPlace = orgIsEmpty
+    ? selectedBacklogId && selectedTreeId && backlogs[selectedBacklogId]
+      ? { treeId: selectedTreeId, backlogId: selectedBacklogId }
+      : firstList(backlogTrees, backlogs)
+    : null;
+  const addFirstItem = (title: string) => {
+    if (!firstItemPlace) return;
+    if (selectedBacklogId !== firstItemPlace.backlogId) selectBacklog(firstItemPlace.backlogId, firstItemPlace.treeId);
+    addWorkItem(title, null, firstItemPlace.backlogId, firstItemPlace.treeId, 0);
+  };
+  const firstItemPrompt = firstItemPlace ? (
+    <FirstItemPrompt
+      listName={backlogs[firstItemPlace.backlogId]?.name ?? "this list"}
+      treeName={backlogTrees[firstItemPlace.treeId]?.name}
+      onAdd={addFirstItem}
+    />
+  ) : null;
 
   // Compute the set of currently-snoozed item IDs. The selector returns a
   // stable comma-joined string so zustand only triggers a re-render when the
@@ -561,7 +586,9 @@ export function WorkItemTreePanel() {
       >
         <FilterBar search={search} filters={filters} labelsVisible={labelsVisible} onOpen={openSearchResult} />
 
-        {!isSearchMode && !isFilterMode && (!selectedBacklogId || !selectedTreeId) ? (
+        {!isSearchMode && !isFilterMode && (!selectedBacklogId || !selectedTreeId) && firstItemPrompt ? (
+          firstItemPrompt
+        ) : !isSearchMode && !isFilterMode && (!selectedBacklogId || !selectedTreeId) ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
@@ -619,6 +646,8 @@ export function WorkItemTreePanel() {
                 }}
                 onCancel={() => setIsAdding(false)}
               />
+            ) : rootWorkItems.length === 0 && !isAdding && firstItemPrompt ? (
+              firstItemPrompt
             ) : rootWorkItems.length === 0 && !isAdding ? (
               <div className="flex items-center justify-center h-32 text-sm text-muted-foreground" role="status" aria-live="polite">
                 {workItemsLoading || workItemsRefreshing ? "Loading work items…" : "No work items in this list"}
