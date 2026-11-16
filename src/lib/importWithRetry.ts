@@ -10,14 +10,20 @@
  * which reloads the page.
  *
  * The file asked for again still loads its own imports from their usual
- * addresses, so before the first retry any of them the browser has cached as
+ * addresses, so before each retry any of them the browser has cached as
  * something else (the HTML page Cloudflare gives for a file it lacks) is
  * fetched again: see repairAssetCache.
+ *
+ * How long it keeps trying: on 2026-11-16, after a deploy, Cloudflare kept
+ * answering a new file with the HTML page for 40 seconds and more. The
+ * retries then took 7 seconds, the one automatic reload failed the same way,
+ * and the visitor was left on the error page. The retries now span about a
+ * minute and a half, while the page shows that it is loading.
  */
 import { repairAssetCache } from "./repairAssetCache";
 
-/** Pauses before each retry: soon, then less soon. */
-export const RETRY_DELAYS_MS = [500, 1_500, 4_000];
+/** Pauses before each retry: soon, then less soon, about 90 seconds in all. */
+export const RETRY_DELAYS_MS = [500, 1_500, 4_000, 8_000, 15_000, 30_000, 30_000];
 
 /** The file a failed dynamic import named, as Chrome and Firefox word it; null otherwise. */
 export function failedModuleUrl(error: unknown): string | null {
@@ -40,8 +46,10 @@ export function importWithRetry<T>(
       const url = failedModuleUrl(first);
       if (!url) throw first;
       let last: unknown = first;
-      await repair(url);
       for (const delay of delays) {
+        // Before every try: what a failed try fetched may have been cached as
+        // the HTML page too.
+        await repair(url);
         await sleep(delay);
         try {
           return await load(`${url}${url.includes("?") ? "&" : "?"}retry=${Date.now()}`);

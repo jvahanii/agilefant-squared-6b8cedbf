@@ -3,7 +3,7 @@
  * of its own — the browser remembers the failed one — before the error page.
  */
 import { describe, it, expect, vi } from "vitest";
-import { failedModuleUrl, importWithRetry } from "@/lib/importWithRetry";
+import { failedModuleUrl, importWithRetry, RETRY_DELAYS_MS } from "@/lib/importWithRetry";
 
 const chromeError = new TypeError("Failed to fetch dynamically imported module: https://agilefant.org/assets/Index-D8-hwuWG.js");
 
@@ -35,6 +35,25 @@ describe("loading a part of the app", () => {
     const load = vi.fn(async (url: string) => { order.push("load"); return { default: url }; });
     await importWithRetry(() => Promise.reject(chromeError), load, [0, 0], repair)();
     expect(order).toEqual(["repair https://agilefant.org/assets/Index-D8-hwuWG.js", "load"]);
+  });
+
+  it("fetches again what the browser cached wrongly before every try, not only the first", async () => {
+    const order: string[] = [];
+    const repair = vi.fn(async () => { order.push("repair"); });
+    let tries = 0;
+    const load = vi.fn(async (url: string) => {
+      order.push("load");
+      if (++tries < 3) throw chromeError;
+      return { default: url };
+    });
+    await importWithRetry(() => Promise.reject(chromeError), load, [0, 0, 0], repair)();
+    expect(order).toEqual(["repair", "load", "repair", "load", "repair", "load"]);
+  });
+
+  it("keeps trying for well over a minute, as long as Cloudflare was seen to take after a deploy (2026-11-16)", () => {
+    const total = RETRY_DELAYS_MS.reduce((a, b) => a + b, 0);
+    expect(total).toBeGreaterThanOrEqual(80_000);
+    expect(RETRY_DELAYS_MS[0]).toBeLessThanOrEqual(1_000);
   });
 
   it("does not look at the cache when nothing fails", async () => {

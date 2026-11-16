@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
+import { DelayedLoading } from "@/components/DelayedLoading";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
@@ -231,7 +232,7 @@ const App = () => (
               <Route
                 path="/p/:token"
                 element={
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<DelayedLoading />}>
                     <PublicBacklog />
                   </Suspense>
                 }
@@ -241,7 +242,7 @@ const App = () => (
               <Route
                 path="/user-guide"
                 element={
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<DelayedLoading />}>
                     <UserGuide />
                   </Suspense>
                 }
@@ -249,7 +250,7 @@ const App = () => (
               <Route
                 path="/user-guide/job-ads"
                 element={
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<DelayedLoading />}>
                     <JobAdsGuide />
                   </Suspense>
                 }
@@ -257,7 +258,7 @@ const App = () => (
               <Route
                 path="/user-guide/jira"
                 element={
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<DelayedLoading />}>
                     <JiraGuide />
                   </Suspense>
                 }
@@ -266,7 +267,7 @@ const App = () => (
               <Route
                 path="/try"
                 element={
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<DelayedLoading />}>
                     <Try />
                   </Suspense>
                 }
@@ -274,7 +275,7 @@ const App = () => (
               <Route
                 path="/terms"
                 element={
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<DelayedLoading />}>
                     <Terms />
                   </Suspense>
                 }
@@ -283,7 +284,7 @@ const App = () => (
               <Route
                 path="/unsubscribe"
                 element={
-                  <Suspense fallback={null}>
+                  <Suspense fallback={<DelayedLoading />}>
                     <Unsubscribe />
                   </Suspense>
                 }
