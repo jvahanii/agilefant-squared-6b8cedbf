@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrgStore } from '@/store/orgStore';
+import { acceptPendingInvite, pendingInvite } from '@/lib/invites';
 import { supabase } from '@/integrations/supabase/client';
 import { PLANS, type PlanKey } from '@/hooks/useSubscription';
 import { toast } from '@/hooks/use-toast';
@@ -32,6 +33,24 @@ export default function Onboarding() {
     const currentUser = user;
 
     async function autoCreateOrg() {
+      // Signed up through an invite link: join that organisation instead of
+      // making one of their own (lib/invites.ts). A link that no longer
+      // works falls through to the usual new organisation.
+      if (pendingInvite()) {
+        try {
+          const accepted = await acceptPendingInvite();
+          if (accepted) {
+            await loadMemberships(currentUser.id);
+            useOrgStore.getState().setActiveOrg(accepted.organizationId, accepted.organizationName);
+            toast({ title: `Welcome to ${accepted.organizationName}` });
+            navigate('/', { replace: true });
+            return;
+          }
+        } catch (err) {
+          toast({ title: 'The invite could not be accepted', description: (err as Error).message, variant: 'destructive' });
+        }
+      }
+
       const fullName: string = currentUser.user_metadata?.full_name ?? '';
       const email: string = currentUser.email ?? '';
       const emailLocal = email.includes('@') ? email.split('@')[0] : email;

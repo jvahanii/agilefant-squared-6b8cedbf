@@ -54,7 +54,7 @@ export function StartChoice({ kind, onChoose }: { kind: StartKind; onChoose: (ki
       </div>
       {kind === "team" && (
         <p className="text-xs text-muted-foreground">
-          To work together, your colleagues sign up first; then you add them by email under{" "}
+          To work together, send your colleagues the invite link from{" "}
           <Link to="/settings/team" className="text-primary underline underline-offset-2 hover:no-underline">
             Team settings
           </Link>

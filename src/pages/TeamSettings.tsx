@@ -52,6 +52,7 @@ import { BackupsCard } from "@/components/BackupsCard";
 import { fetchIsSuperuser } from "@/lib/superuser";
 import { GithubIntegrationsCard } from "@/components/GithubIntegrationsCard";
 import { WhatsappIntegrationsCard } from "@/components/WhatsappIntegrationsCard";
+import { InviteLinkCard } from "@/components/InviteLinkCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -672,6 +673,10 @@ export default function TeamSettings() {
             </CardContent>
           </Card>
         )}
+
+        {/* A link colleagues sign up through, before the by-email invite
+            below, which needs them to have an account already. */}
+        {canManage && activeOrgId && <InviteLinkCard orgId={activeOrgId} />}
 
         {canManage && (
           <Card>

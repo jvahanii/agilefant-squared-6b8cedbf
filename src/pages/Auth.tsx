@@ -2,8 +2,9 @@ import { useWebAnalytics } from "@/lib/webAnalytics";
 import { Link } from "react-router-dom";
 import { SignIn, SignUp } from "@clerk/clerk-react";
 import { clerkEnabled } from "@/lib/clerkBridge";
-import { Info, ListChecks } from "lucide-react";
+import { Info, ListChecks, UserPlus } from "lucide-react";
 import { loadTryList } from "@/lib/tryList";
+import { pendingInvite } from "@/lib/invites";
 
 /**
  * Sign-in and sign-up via Clerk.
@@ -44,6 +45,8 @@ export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up
 
   // What the visitor made in the try-out, waiting for the new account (2026-11-16).
   const tried = mode === "sign-up" ? (loadTryList()?.length ?? 0) : 0;
+  // An invite link opened on the way here (lib/invites.ts).
+  const invite = pendingInvite();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -67,6 +70,16 @@ export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up
               Agilefant has a new enterprise grade sign-in with SSO readiness for those who needed it. Sign in with the
               same email address as always — through Google, or by creating a password here — and your account, teams
               and work items come with you automatically.
+            </p>
+          </div>
+        )}
+
+        {invite && (
+          <div role="status" className="flex items-start gap-3 rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+            <UserPlus className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            <p>
+              {mode === "sign-up" ? "Sign up" : "Sign in"} and you'll join{" "}
+              <strong>{invite.organizationName || "the organisation that invited you"}</strong>.
             </p>
           </div>
         )}
@@ -99,7 +112,7 @@ export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up
               </Link>
               .
             </p>
-            {tried === 0 && (
+            {tried === 0 && !invite && (
               <p>
                 Not sure yet?{" "}
                 <a href="/try" className="underline underline-offset-4 hover:text-foreground">

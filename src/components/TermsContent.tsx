@@ -105,6 +105,10 @@ export function TermsContent() {
           <strong>Server logs</strong> with your IP address and browser, kept by our hosting providers.
         </li>
         <li>
+          <strong>What you tell us:</strong> an answer you send to the question we ask when you close the
+          getting-started panel, kept with your account until you delete it.
+        </li>
+        <li>
           <strong>Visitor counts</strong> for the public pages (the front page, the try-out page, sign-in and sign-up,
           these terms and the guides) and the first page of a new account, with Cloudflare Web Analytics: which pages are viewed,
           from what kind of browser and country. It uses no cookies, keeps nothing in your browser and does not

@@ -22,6 +22,6 @@ describe("loading a public page", () => {
   it("is what every public route shows while it loads", () => {
     const app = readFileSync(join(process.cwd(), "src/App.tsx"), "utf8");
     expect(app).not.toContain("fallback={null}");
-    expect(app.match(/fallback=\{<DelayedLoading \/>\}/g)?.length).toBe(7);
+    expect(app.match(/fallback=\{<DelayedLoading \/>\}/g)?.length).toBe(8);
   });
 });

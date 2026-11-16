@@ -62,6 +62,7 @@ const BellsAndWhistles = lazy(importWithRetry(() => import("./pages/BellsAndWhis
 const PublicBacklog = lazy(importWithRetry(() => import("./pages/PublicBacklog")));
 const Terms = lazy(importWithRetry(() => import("./pages/Terms")));
 const Try = lazy(importWithRetry(() => import("./pages/Try")));
+const Join = lazy(importWithRetry(() => import("./pages/Join")));
 const Unsubscribe = lazy(importWithRetry(() => import("./pages/Unsubscribe")));
 const JobAdsGuide = lazy(importWithRetry(() => import("./pages/JobAdsGuide")));
 const JiraGuide = lazy(importWithRetry(() => import("./pages/JiraGuide")));
@@ -260,6 +261,15 @@ const App = () => (
                 element={
                   <Suspense fallback={<DelayedLoading />}>
                     <JiraGuide />
+                  </Suspense>
+                }
+              />
+              {/* An invite link: says which organisation, then leads to sign-up or sign-in. */}
+              <Route
+                path="/join/:token"
+                element={
+                  <Suspense fallback={<DelayedLoading />}>
+                    <Join />
                   </Suspense>
                 }
               />
