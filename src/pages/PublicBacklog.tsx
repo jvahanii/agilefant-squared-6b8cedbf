@@ -47,7 +47,19 @@ type LoadState =
   | { status: "loading" }
   | { status: "missing" }
   | { status: "error"; message: string }
-  | { status: "ready"; payload: PublishedPayload };
+  /** asOf: when a list shown from the kept copy was built, because a fresh one did not come. */
+  | { status: "ready"; payload: PublishedPayload; asOf?: string };
+
+/**
+ * How long a visitor waits for the fresh list before being shown the one kept
+ * from its last build (migration 20261116190000). Building a long list once
+ * took 8 to 42 seconds while the database's disk was slowed; the kept copy
+ * comes in milliseconds.
+ */
+const KEPT_COPY_AFTER_MS = 2_500;
+
+const asOfText = (iso: string) =>
+  new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 type LabelInfo = { id: string; name: string; color: string };
 
@@ -117,6 +129,21 @@ export default function PublicBacklog() {
 
   /** Whether the list came. A list that did not leaves one already shown where it is. */
   const load = useCallback(async (): Promise<boolean> => {
+    let fresh = false;
+    // The list as last built, while the fresh one is slow or when it fails:
+    // an older list is worth more to a reader than a wait or an apology.
+    const showKept = async () => {
+      try {
+        const { data: kept } = await supabase.rpc("get_published_backlog_last" as never, { _token: token } as never);
+        const copy = kept as { payload?: PublishedPayload; builtAt?: string } | null;
+        if (fresh || !copy?.payload) return;
+        const payload = copy.payload;
+        setState((was) => (was.status === "ready" ? was : { status: "ready", payload, asOf: copy.builtAt }));
+      } catch {
+        // No kept copy to show: the page waits, or says what failed.
+      }
+    };
+    const slow = setTimeout(() => void showKept(), KEPT_COPY_AFTER_MS);
     const [{ data, error }, features] = await Promise.all([
       askPatiently(() => supabase.rpc("get_published_backlog", { _token: token }), PUBLIC_LOAD_RETRY_MS),
       // Alongside, and never long in the way: a page whose answer to this does
@@ -131,12 +158,15 @@ export default function PublicBacklog() {
       setJobFiltersOn(answer?.jobFilters === true);
       setFinnishByItem(answer?.finnish ?? {});
     }
+    clearTimeout(slow);
     if (error) {
       // Said where it can be read: the page itself only says that it failed.
       console.warn("Public page: the list did not load —", error.message);
+      await showKept();
       setState((was) => (was.status === "ready" ? was : { status: "error", message: error.message }));
       return false;
     }
+    fresh = true;
     if (!data) {
       setState({ status: "missing" });
     } else {
@@ -515,6 +545,13 @@ export default function PublicBacklog() {
           )}
         </div>
       </header>
+
+      {state.asOf && (
+        <p role="status" className="mb-4 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          This is the list as it was at {asOfText(state.asOf)}. It could not be brought up to date just now;
+          Refresh tries again.
+        </p>
+      )}
 
       {/* Only a list of job ads: its readers are job hunting themselves. */}
       {jobFiltersOn && <JobSearchCallout token={token} />}
