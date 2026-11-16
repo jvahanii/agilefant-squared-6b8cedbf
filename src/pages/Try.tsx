@@ -147,14 +147,17 @@ export default function Try() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <Logo />
           <nav className="flex items-center gap-1 text-sm sm:gap-2">
-            <Link to="/auth" className="rounded-md px-3 py-1.5 font-medium hover:bg-muted">
+            <Link to="/auth" className="whitespace-nowrap rounded-md px-2 py-1.5 font-medium hover:bg-muted sm:px-3">
               Sign in
             </Link>
+            {/* Short on the narrowest phones, where the full label wrapped. */}
             <Link
               to="/auth/sign-up"
-              className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground hover:bg-primary/90"
+              aria-label="Sign up to keep it"
+              className="whitespace-nowrap rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Sign up to keep it
+              <span className="min-[400px]:hidden">Sign up</span>
+              <span className="hidden min-[400px]:inline">Sign up to keep it</span>
             </Link>
           </nav>
         </div>
