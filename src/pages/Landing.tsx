@@ -294,10 +294,11 @@ export default function Landing() {
                 >
                   Free forever <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
-                {/* Sign in stays in the header; here, a way to look before signing up. */}
-                <Link to="/try" className="inline-flex items-center rounded-md border bg-card px-5 py-2.5 font-medium hover:bg-muted">
+                {/* Sign in stays in the header; here, a way to look before signing
+                    up. A plain link: the try-out starts in a page of its own. */}
+                <a href="/try" className="inline-flex items-center rounded-md border bg-card px-5 py-2.5 font-medium hover:bg-muted">
                   Try it first, no account
-                </Link>
+                </a>
               </div>
             </div>
             <ProductPreview />
@@ -417,9 +418,9 @@ export default function Landing() {
             </Link>
             <p className="mt-4 text-sm text-primary-foreground/85">
               Or{" "}
-              <Link to="/try" className="underline underline-offset-2 hover:text-primary-foreground">
+              <a href="/try" className="underline underline-offset-2 hover:text-primary-foreground">
                 try it here first
-              </Link>
+              </a>
               , without an account.
             </p>
           </div>

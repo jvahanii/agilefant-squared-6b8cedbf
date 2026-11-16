@@ -1,22 +1,16 @@
 /**
- * The try-out list on /try (2026-11-16): the outline operations, what becomes
- * of it when it is brought into a new account, and how long it is kept.
+ * What a visitor adds in the try-out (2026-11-16): how it is kept in the
+ * browser, what it becomes when brought into a new account, and how long it
+ * is kept.
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import {
-  addTitles,
   countNodes,
-  exampleItems,
-  indent,
   loadTryList,
-  MAX_TRY_ITEMS,
-  outdent,
-  remove,
   sanitize,
   saveTryList,
   statusOf,
   takeTriedList,
-  toggleDone,
   toTree,
   TRY_LIST_DAYS,
   TRY_LIST_KEY,
@@ -39,63 +33,20 @@ const LIST = outline(`
 A
   A1
   A2
-    A2a
+    A2a x
 B
 C`);
 
-describe("nesting", () => {
-  it("Tab puts an item, with its sub-items, under the item above", () => {
-    expect(show(indent(LIST, 4))).toBe(show(outline(`
-A
-  A1
-  A2
-    A2a
-  B
-C`)));
-    expect(show(indent(LIST, 2))).toBe(show(outline(`
-A
-  A1
-    A2
-      A2a
-B
-C`)));
-  });
-
-  it("Tab does nothing for the first item, or one already a step below the item above", () => {
-    expect(indent(LIST, 0)).toBe(LIST);
-    expect(indent(LIST, 1)).toBe(LIST);
-    expect(indent(LIST, 3)).toBe(LIST);
-  });
-
-  it("Shift+Tab brings an item and its sub-items out one level, and does nothing at the top", () => {
-    expect(show(outdent(LIST, 2))).toBe(show(outline(`
-A
-  A1
-A2
-  A2a
-B
-C`)));
-    expect(outdent(LIST, 0)).toBe(LIST);
-  });
-
-  it("deleting an item deletes what is under it", () => {
-    expect(show(remove(LIST, 0))).toBe("B\nC");
-    expect(show(remove(LIST, 5))).toBe(show(LIST.slice(0, 5)));
-  });
-});
-
 describe("statuses", () => {
   it("a parent is in progress while part of it is done", () => {
-    const items = toggleDone(LIST, 3);
-    expect(statusOf(items, 3)).toBe("done");
-    expect(statusOf(items, 2)).toBe("in_progress");
-    expect(statusOf(items, 0)).toBe("in_progress");
-    expect(statusOf(items, 4)).toBe("not_started");
-    expect(statusOf(toggleDone(items, 0), 0)).toBe("done");
+    expect(statusOf(LIST, 3)).toBe("done");
+    expect(statusOf(LIST, 2)).toBe("in_progress");
+    expect(statusOf(LIST, 0)).toBe("in_progress");
+    expect(statusOf(LIST, 4)).toBe("not_started");
   });
 
   it("the outline becomes nested items with those statuses", () => {
-    expect(toTree(toggleDone(LIST, 3))).toEqual([
+    expect(toTree(LIST)).toEqual([
       {
         title: "A",
         status: "in_progress",
@@ -108,22 +59,6 @@ describe("statuses", () => {
       { title: "C", status: "not_started" },
     ]);
     expect(countNodes(toTree(LIST))).toBe(6);
-  });
-});
-
-describe("adding", () => {
-  it("adds at the end, at the top level, up to the limit", () => {
-    expect(show(addTitles(LIST, ["D", "E"]).slice(-3))).toBe("C\nD\nE");
-    const full = addTitles([], Array.from({ length: MAX_TRY_ITEMS + 5 }, (_, i) => `t${i}`));
-    expect(full).toHaveLength(MAX_TRY_ITEMS);
-    expect(addTitles(full, ["more"])).toHaveLength(MAX_TRY_ITEMS);
-  });
-
-  it("the examples show nesting and a done item", () => {
-    const ex = exampleItems();
-    expect(ex.some((it) => it.depth > 0)).toBe(true);
-    expect(ex.some((it) => it.done)).toBe(true);
-    expect(sanitize(ex)).toHaveLength(ex.length);
   });
 });
 

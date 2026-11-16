@@ -1,7 +1,7 @@
 import type { WorkItemStatus } from "@/types/models";
 
 /**
- * The list a visitor makes on /try before signing up (2026-11-16).
+ * What a visitor adds in the try-out at /try before signing up (2026-11-16).
  *
  * It lives only in this browser, under one localStorage key, and nothing is
  * sent anywhere. When the visitor signs up, the new account's first screen
@@ -34,55 +34,11 @@ const MAX_TITLE = 500;
 let seq = 0;
 export const newTryId = () => `try-${Date.now().toString(36)}-${(seq++).toString(36)}`;
 
-const ex = (title: string, depth = 0, done = false): TryItem => ({ id: newTryId(), title, depth, done });
-
-/** What the page starts with, so the nesting shows before anyone types. */
-export function exampleItems(): TryItem[] {
-  return [
-    ex("Plan the team kick-off"),
-    ex("Book a room", 1, true),
-    ex("Send the invitations", 1),
-    ex("Order coffee and pastries", 2),
-    ex("Renew my passport"),
-    ex("Fix the bike's back light"),
-  ];
-}
-
 /** The index just past item i's last sub-item. */
 export function subtreeEnd(items: TryItem[], i: number): number {
   let end = i + 1;
   while (end < items.length && items[end].depth > items[i].depth) end++;
   return end;
-}
-
-/** Tab: item i, with its sub-items, goes under the item above it. */
-export function indent(items: TryItem[], i: number): TryItem[] {
-  if (i <= 0 || i >= items.length || items[i - 1].depth < items[i].depth) return items;
-  const end = subtreeEnd(items, i);
-  return items.map((it, k) => (k >= i && k < end ? { ...it, depth: it.depth + 1 } : it));
-}
-
-/** Shift+Tab: item i, with its sub-items, comes out one level. */
-export function outdent(items: TryItem[], i: number): TryItem[] {
-  if (i < 0 || i >= items.length || items[i].depth === 0) return items;
-  const end = subtreeEnd(items, i);
-  return items.map((it, k) => (k >= i && k < end ? { ...it, depth: it.depth - 1 } : it));
-}
-
-/** Deleting an item deletes its sub-items too, as in the app. */
-export function remove(items: TryItem[], i: number): TryItem[] {
-  if (i < 0 || i >= items.length) return items;
-  return [...items.slice(0, i), ...items.slice(subtreeEnd(items, i))];
-}
-
-export function toggleDone(items: TryItem[], i: number): TryItem[] {
-  return items.map((it, k) => (k === i ? { ...it, done: !it.done } : it));
-}
-
-/** New items go at the end, at the top level, up to MAX_TRY_ITEMS in all. */
-export function addTitles(items: TryItem[], titles: string[]): TryItem[] {
-  const room = Math.max(0, MAX_TRY_ITEMS - items.length);
-  return [...items, ...titles.slice(0, room).map((t) => ex(t.slice(0, MAX_TITLE)))];
 }
 
 /**

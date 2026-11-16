@@ -10,7 +10,7 @@ import {
   pointerWithin,
   rectIntersection,
 } from "@dnd-kit/core";
-import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useCallback, useEffect, useRef, lazy, Suspense, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAutoCheckEnabled, isAutoTestEnabled } from "@/hooks/useAutoIntegrityCheck";
 import { useOrgStore } from "@/store/orgStore";
@@ -102,10 +102,14 @@ const TimesheetBrowserDialog = lazy(() =>
 const MOUSE_SENSOR_OPTIONS = { activationConstraint: { distance: 8 } };
 const TOUCH_SENSOR_OPTIONS = { activationConstraint: { delay: 200, tolerance: 8 } };
 
-export default function AppLayout() {
+/**
+ * banner: a bar above the header, used by the try-out (pages/Try.tsx), which
+ * also sets tryOut to leave out what leads to pages a try-out has no part in.
+ */
+export default function AppLayout({ banner, tryOut = false }: { banner?: ReactNode; tryOut?: boolean } = {}) {
   return (
     <ScrambleProvider>
-      <AppLayoutInner />
+      <AppLayoutInner banner={banner} tryOut={tryOut} />
       <DeleteGuardHost />
       <RerankGuardHost />
       <BurnupDialogHost />
@@ -134,7 +138,7 @@ function BurnupDialogHost() {
   );
 }
 
-function AppLayoutInner() {
+function AppLayoutInner({ banner, tryOut }: { banner?: ReactNode; tryOut: boolean }) {
   const { user } = useAuth();
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
@@ -567,6 +571,7 @@ function AppLayoutInner() {
       }}
     >
       <div className="h-screen flex flex-col overflow-hidden bg-background">
+        {banner}
         {/* HEADER */}
         <header className="h-8 md:h-10 border-b flex items-center px-2 md:px-4 gap-2 md:gap-3 bg-[#f5f5f5] shrink-0 shadow-sm z-10">
           <img
@@ -579,14 +584,14 @@ function AppLayoutInner() {
             <sup className="text-xs text-primary ml-0.5 font-mono">2</sup>
           </h1>
           <OrgSwitcher />
-          <button
+          {!tryOut && <button
             className="hidden sm:flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border bg-background hover:bg-accent transition-colors"
             onClick={() => navigate("/settings/team#bells-whistles")}
             title="Bells & Whistles"
           >
             <Settings className="w-3.5 h-3.5 text-primary" />
             <span className="hidden md:inline">Bells &amp; Whistles</span>
-          </button>
+          </button>}
           <JobSearchRunButton />
           {/* For the Jira workshop; to come out of the header again after it. */}
           <JiraSyncHeaderButton />

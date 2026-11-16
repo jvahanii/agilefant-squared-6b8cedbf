@@ -1,5 +1,6 @@
 import { toIsoDate, wellFormedDeadline } from "@/lib/deadlineFormat";
 import { forgetDeletedContainers } from './deletedContainers';
+import { isDemoMode } from "@/lib/demoMode";
 import { wellFormedPoints } from "@/lib/backlogPoints";
 import { create } from "zustand";
 import { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink, getEffectiveParentId } from "@/types/models";
@@ -937,6 +938,9 @@ export const useAppStore = create<AppState>()((set, get) => {
 
     loadFromSupabase: async () => {
       const orgId = get().organizationId;
+      // The try-out's data is the example in the store; the database is
+      // switched off there and would answer with nothing (lib/demoMode.ts).
+      if (isDemoMode()) return;
       if (!orgId) {
         set((state) => state.isLoading ? { isLoading: false } : state);
         return;
