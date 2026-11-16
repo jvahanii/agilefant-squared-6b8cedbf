@@ -97,8 +97,9 @@ export function TermsContent() {
         </li>
         <li>
           <strong>What you choose to connect:</strong> links found in the Gmail messages your import searches for,
-          issues of a connected Jira, merged pull requests of a connected GitHub repository, and messages forwarded
-          from WhatsApp.
+          issues of a connected Jira, merged pull requests of a connected GitHub repository, messages forwarded
+          from WhatsApp, and public lists you copy into your account, with the address of each so that its new items
+          can be added to your copy.
         </li>
         <li>
           <strong>Server logs</strong> with your IP address and browser, kept by our hosting providers.

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { JobFilterPanel } from "@/components/JobFilterPanel";
+import { JobSearchCallout } from "@/components/JobSearchCallout";
 import { passesJobFilters, sourceCounts, storedJobFilters, storeJobFilters, type JobChip } from "@/lib/jobFilters";
 import { useParams } from "react-router-dom";
 import { ArrowDown, ArrowDownAZ, ArrowUp, ArrowUpDown, CalendarClock, CalendarRange, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
@@ -514,6 +515,9 @@ export default function PublicBacklog() {
           )}
         </div>
       </header>
+
+      {/* Only a list of job ads: its readers are job hunting themselves. */}
+      {jobFiltersOn && <JobSearchCallout token={token} />}
 
       {p.backlogs.length === 0 ? (
         <p className="text-sm text-muted-foreground">There are no lists here yet.</p>

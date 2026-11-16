@@ -5,6 +5,7 @@ import { useOrgStore } from '@/store/orgStore';
 import { useTeamStore } from '@/store/teamStore';
 import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useRespawnCheck } from '@/hooks/useRespawnCheck';
+import { usePublishedListCopies } from '@/hooks/usePublishedListCopies';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { useResyncOnWake } from '@/hooks/useResyncOnWake';
 import { usePasteImageOnSelected } from '@/hooks/usePasteImageOnSelected';
@@ -179,6 +180,8 @@ const Index = () => {
   }, [activeOrgId, isLoading]);
 
   useRespawnCheck();
+  // A public list asked to be copied, and the new items of lists copied before.
+  usePublishedListCopies(activeOrgId, !isLoading && !workItemsLoading);
   useRealtimeSync();
   useResyncOnWake();
   usePasteImageOnSelected();
