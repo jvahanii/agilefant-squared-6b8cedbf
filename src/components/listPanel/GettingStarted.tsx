@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Circle, X } from "lucide-react";
+import { CheckCircle2, Circle, Smartphone, X } from "lucide-react";
 import type { WorkItem } from "@/types/models";
 import { closeSteps, gettingStartedSteps, stepsClosed, type StepKey } from "./startSteps";
 import { OrgNameLine } from "./OrgNameLine";
 import { StartChoice } from "./StartChoice";
 import type { StartKind } from "./startPresets";
+import { useInstallWay } from "@/lib/installPrompt";
 
 const TEXT: Record<StepKey, { title: string; how: string }> = {
   more: {
@@ -46,6 +47,7 @@ export function GettingStarted({
   org?: { name: string; onRename: (name: string) => Promise<void> };
 }) {
   const steps = useMemo(() => gettingStartedSteps(Object.values(workItems)), [workItems]);
+  const install = useInstallWay();
   const [closed, setClosed] = useState(() => stepsClosed(orgId));
   if (!steps || closed) return null;
 
@@ -100,6 +102,26 @@ export function GettingStarted({
           </li>
         ))}
       </ol>
+      {/* An icon on the home screen brings people back; offered where the
+          browser can install the app, and explained on an iPhone. */}
+      {install && (
+        <div className="mt-2 flex items-start gap-2 border-t pt-2 text-sm">
+          <Smartphone aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+          {install.kind === "prompt" ? (
+            <button
+              type="button"
+              className="text-left text-primary underline underline-offset-2 hover:no-underline"
+              onClick={() => void install.install()}
+            >
+              Put Agilefant on your home screen
+            </button>
+          ) : (
+            <span className="text-muted-foreground">
+              To put Agilefant on your home screen, tap Share, then Add to Home Screen.
+            </span>
+          )}
+        </div>
+      )}
       {allDone && (
         <p className="mt-1.5 text-xs text-muted-foreground">
           From here: rename your lists, add more trees, and switch on extras such as story points in your

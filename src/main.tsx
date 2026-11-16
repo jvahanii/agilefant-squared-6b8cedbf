@@ -3,6 +3,8 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import { ClerkBridge } from "./lib/clerkBridge";
 import App from "./App.tsx";
 import "./index.css";
+// Listens for the browser's offer to install the app, which comes once and early.
+import "./lib/installPrompt";
 import { supabase } from "@/integrations/supabase/client";
 import { keepRealtimeAuthFresh } from "@/integrations/supabase/realtimeAuth";
 

@@ -2,7 +2,8 @@ import { useWebAnalytics } from "@/lib/webAnalytics";
 import { Link } from "react-router-dom";
 import { SignIn, SignUp } from "@clerk/clerk-react";
 import { clerkEnabled } from "@/lib/clerkBridge";
-import { Info } from "lucide-react";
+import { Info, ListChecks } from "lucide-react";
+import { loadTryList } from "@/lib/tryList";
 
 /**
  * Sign-in and sign-up via Clerk.
@@ -41,20 +42,45 @@ export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up
     );
   }
 
+  // What the visitor made in the try-out, waiting for the new account (2026-11-16).
+  const tried = mode === "sign-up" ? (loadTryList()?.length ?? 0) : 0;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-4">
-        {/* Was a warning against creating accounts, which is now the opposite of
-            what a returning user has to do: signing in here is what carries an
-            existing account across. Hence an informational tone, not a caution. */}
-        <div role="status" className="flex items-start gap-3 rounded-md border bg-muted/60 px-4 py-3 text-sm">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <p>
-            Agilefant has a new enterprise grade sign-in with SSO readiness for those who needed it. Sign in with the
-            same email address as always — through Google, or by creating a password here — and your account, teams and
-            work items come with you automatically.
-          </p>
-        </div>
+        {/* Whose sign-up this is, and the way back: Clerk's own card says only
+            "Create your account". A plain link, as the front page is a page of its own. */}
+        <a href="/" className="flex items-center justify-center gap-2 font-semibold tracking-tight">
+          <img src="/agilefant-shield.png" alt="" width={32} height={32} className="h-8 w-8 object-contain" />
+          <span>
+            Agilefant<sup className="text-primary">2</sup>
+          </span>
+        </a>
+
+        {/* For people who had an account before the sign-in moved to Clerk:
+            signing in here carries it across. Nothing to a newcomer signing up,
+            so only on the sign-in page. */}
+        {mode === "sign-in" && (
+          <div role="status" className="flex items-start gap-3 rounded-md border bg-muted/60 px-4 py-3 text-sm">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <p>
+              Agilefant has a new enterprise grade sign-in with SSO readiness for those who needed it. Sign in with the
+              same email address as always — through Google, or by creating a password here — and your account, teams
+              and work items come with you automatically.
+            </p>
+          </div>
+        )}
+
+        {tried > 0 && (
+          <div role="status" className="flex items-start gap-3 rounded-md border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+            <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            <p>
+              {tried === 1
+                ? "The item you added in the try-out will be waiting in your new account."
+                : `The ${tried} items you added in the try-out will be waiting in your new account.`}
+            </p>
+          </div>
+        )}
 
         <div className="flex justify-center">
           {mode === "sign-up" ? (
@@ -63,6 +89,27 @@ export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up
             <SignIn routing="hash" signUpUrl="/auth/sign-up" appearance={appearance} />
           )}
         </div>
+
+        {mode === "sign-up" && (
+          <div className="space-y-1 text-center text-xs text-muted-foreground">
+            <p>
+              By creating an account you agree to the{" "}
+              <Link to="/terms" className="underline underline-offset-4 hover:text-foreground">
+                terms and privacy notice
+              </Link>
+              .
+            </p>
+            {tried === 0 && (
+              <p>
+                Not sure yet?{" "}
+                <a href="/try" className="underline underline-offset-4 hover:text-foreground">
+                  Try it first
+                </a>
+                , no account needed.
+              </p>
+            )}
+          </div>
+        )}
 
         <p className="text-center text-xs text-muted-foreground">
           <Link to="/user-guide" className="hover:text-foreground underline underline-offset-4 transition-colors">
