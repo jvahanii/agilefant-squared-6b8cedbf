@@ -6,6 +6,7 @@
 import type { StoreApi } from "zustand";
 import type { WorkItem, WorkItemStatus, Backlog, BacklogTree, Hyperlink } from "@/types/models";
 import type { ChangeLogEntry } from "../changeLog";
+import type { NewItemNode } from "@/lib/tryList";
 
 export interface DataSnapshot {
   workItems: Record<string, WorkItem>;
@@ -85,6 +86,9 @@ export interface AppState extends DataSnapshot {
   moveWorkItemsToBacklog: (workItemIds: string[], targetBacklogId: string, targetTreeId: string, strategy?: "move" | "mirror", sourceTreeId?: string) => void;
   addWorkItem: (title: string, parentId: string | null, backlogId: string, treeId: string, rank?: number, initialStatus?: WorkItemStatus, boardRank?: number) => void;
   bulkAddWorkItems: (titles: string[], parentId: string | null, backlogId: string, treeId: string, initialStatus?: WorkItemStatus) => void;
+  /** Adds an outline at once, sub-items and statuses included, after the
+   *  list's last top-level item: one save and one undo step. */
+  addWorkItemTree: (nodes: NewItemNode[], backlogId: string, treeId: string) => void;
   deleteWorkItem: (workItemId: string, direction?: 'up' | 'down') => void;
   deleteWorkItemsBulk: (workItemIds: string[], direction?: 'up' | 'down') => void;
   /** Duplicate work items (deep — includes descendants). Each new root is

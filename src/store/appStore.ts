@@ -1166,6 +1166,70 @@ export const useAppStore = create<AppState>()((set, get) => {
       });
     },
 
+    addWorkItemTree: (nodes, backlogId, treeId) => {
+      const state = get();
+      const orgId = state.organizationId;
+      if (!orgId || nodes.length === 0) return;
+
+      const updatedWorkItems = { ...state.workItems };
+      // After every top-level item shown in this list, as bulkAddWorkItems does.
+      const allBacklogIds = new Set<string>();
+      const collectDescendants = (id: string) => {
+        allBacklogIds.add(id);
+        state.backlogs[id]?.childrenIds.forEach(collectDescendants);
+      };
+      collectDescendants(backlogId);
+      let maxRank = -1;
+      Object.values(updatedWorkItems).forEach((wi) => {
+        if (getEffectiveParentId(wi, treeId) === null && allBacklogIds.has(wi.backlogAssignments[treeId])) {
+          maxRank = Math.max(maxRank, wi.ranks[wi.backlogAssignments[treeId]] ?? 0);
+        }
+      });
+
+      const createdOn = toIsoDate(new Date());
+      const newItems: WorkItem[] = [];
+      const addLevel = (level: typeof nodes, parentId: string | null, firstRank: number): string[] =>
+        level.map((node, i) => {
+          const id = ensureCleanId(`wi-${crypto.randomUUID().slice(0, 8)}`, orgId);
+          const item: WorkItem = {
+            id,
+            title: node.title,
+            parentId,
+            ranks: { [backlogId]: firstRank + i },
+            boardRanks: { [backlogId]: firstRank + i },
+            backlogAssignments: { [treeId]: backlogId },
+            status: node.status ?? "not_started",
+            childrenIds: [],
+            points: undefined,
+            organizationId: orgId,
+            createdOn,
+          };
+          newItems.push(item);
+          item.childrenIds = addLevel(node.children ?? [], id, 0);
+          updatedWorkItems[id] = item;
+          return id;
+        });
+      addLevel(nodes, null, maxRank + 1);
+
+      const newItemBoardRankRows = newItems.map((item) => ({
+        workItemId: item.id,
+        backlogId,
+        rank: item.boardRanks?.[backlogId] ?? 0,
+        organizationId: orgId,
+      }));
+      // One save for the whole outline: the rows go in one request, so a
+      // child never reaches the database ahead of its parent.
+      persistWorkItemUpserts(newItems, orgId, newItemBoardRankRows, { backlogs: state.backlogs, backlogTrees: state.backlogTrees });
+      internalLog({ action: "Bulk Add", entityType: "work_item", details: `${newItems.length} items added` });
+
+      set({
+        workItems: updatedWorkItems,
+        undoStack: pushUndoEntry(state),
+        redoStack: [],
+      });
+      patchCachedWorkItems(orgId, Object.fromEntries(newItems.map((wi) => [wi.id, wi])));
+    },
+
     deleteWorkItem: (workItemId: string, direction?: 'up' | 'down') => {
       const state = get();
       const orgId = state.organizationId;

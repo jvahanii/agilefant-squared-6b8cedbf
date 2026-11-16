@@ -28,6 +28,7 @@ import {
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { BacklogTreePanel } from "@/components/BacklogTreePanel";
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
+import { useOrgIsEmpty } from "@/components/listPanel/useOrgIsEmpty";
 import { useAppStore } from "@/store/appStore";
 import { ActionPrompt } from "@/components/ActionPrompt";
 import { DeleteGuardHost } from "@/components/DeleteGuardHost";
@@ -149,6 +150,17 @@ function AppLayoutInner() {
   const [mobileBacklogsCollapsed, setMobileBacklogsCollapsed] = useState(false);
 
   const isMobile = useIsMobile();
+
+  // On a phone the lists take 40% of the screen, which put a new account's
+  // "Add your first item" box below the fold, under the keyboard once it
+  // opened. While the organisation is empty they start folded away, once.
+  const orgIsEmpty = useOrgIsEmpty();
+  const foldedForEmptyOrg = useRef(false);
+  useEffect(() => {
+    if (!isMobile || !orgIsEmpty || foldedForEmptyOrg.current) return;
+    foldedForEmptyOrg.current = true;
+    setMobileBacklogsCollapsed(true);
+  }, [isMobile, orgIsEmpty]);
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const activeDragRef = useRef(activeDrag);

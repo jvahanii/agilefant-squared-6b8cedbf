@@ -104,14 +104,15 @@ export function TermsContent() {
           <strong>Server logs</strong> with your IP address and browser, kept by our hosting providers.
         </li>
         <li>
-          <strong>Visitor counts</strong> for the public pages (the front page, sign-in and sign-up, these terms and
-          the guides) and the first page of a new account, with Cloudflare Web Analytics: which pages are viewed,
+          <strong>Visitor counts</strong> for the public pages (the front page, the try-out page, sign-in and sign-up,
+          these terms and the guides) and the first page of a new account, with Cloudflare Web Analytics: which pages are viewed,
           from what kind of browser and country. It uses no cookies, keeps nothing in your browser and does not
           record who you are or follow you to other sites.
         </li>
         <li>
           <strong>In your browser:</strong> the sign-in cookies Clerk needs, and a copy of your data so the app opens
-          quickly. There is no advertising or tracking.
+          quickly. A list made on the try-out page before signing up stays only in your browser until it moves into
+          your new account, or is a week old. There is no advertising or tracking.
         </li>
       </ul>
 

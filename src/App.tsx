@@ -60,6 +60,7 @@ const UserGuide = lazy(importWithRetry(() => import("./pages/UserGuide")));
 const BellsAndWhistles = lazy(importWithRetry(() => import("./pages/BellsAndWhistles")));
 const PublicBacklog = lazy(importWithRetry(() => import("./pages/PublicBacklog")));
 const Terms = lazy(importWithRetry(() => import("./pages/Terms")));
+const Try = lazy(importWithRetry(() => import("./pages/Try")));
 const Unsubscribe = lazy(importWithRetry(() => import("./pages/Unsubscribe")));
 const JobAdsGuide = lazy(importWithRetry(() => import("./pages/JobAdsGuide")));
 const JiraGuide = lazy(importWithRetry(() => import("./pages/JiraGuide")));
@@ -258,6 +259,15 @@ const App = () => (
                 element={
                   <Suspense fallback={null}>
                     <JiraGuide />
+                  </Suspense>
+                }
+              />
+              {/* Trying the app before signing up: a list kept in this browser. */}
+              <Route
+                path="/try"
+                element={
+                  <Suspense fallback={null}>
+                    <Try />
                   </Suspense>
                 }
               />

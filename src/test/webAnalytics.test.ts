@@ -16,7 +16,7 @@ describe("loading the counter", () => {
   beforeEach(() => beacons().forEach((s) => s.remove()));
 
   it("stays off without a site token, and off anywhere but agilefant.org", () => {
-    expect(loadWebAnalytics(undefined, "agilefant.org")).toBe(false);
+    // An empty token, not undefined: undefined falls back to the real one in .env.
     expect(loadWebAnalytics("", "agilefant.org")).toBe(false);
     expect(loadWebAnalytics("tok", "localhost")).toBe(false);
     expect(loadWebAnalytics("tok", "preview.agilefant-squared.pages.dev")).toBe(false);
@@ -36,8 +36,8 @@ describe("loading the counter", () => {
 describe("the pages that count", () => {
   const uses = (page: string) => read(`src/pages/${page}.tsx`).includes("useWebAnalytics()");
 
-  it("are the ways in: front page, sign-in and sign-up, a new account's first page, terms and guides", () => {
-    for (const page of ["Landing", "Auth", "Onboarding", "Terms", "UserGuide", "JobAdsGuide", "JiraGuide"]) {
+  it("are the ways in: front page, the try-out, sign-in and sign-up, a new account's first page, terms and guides", () => {
+    for (const page of ["Landing", "Try", "Auth", "Onboarding", "Terms", "UserGuide", "JobAdsGuide", "JiraGuide"]) {
       expect(uses(page), page).toBe(true);
     }
   });

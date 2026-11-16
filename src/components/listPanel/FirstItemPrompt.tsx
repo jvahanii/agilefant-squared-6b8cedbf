@@ -39,7 +39,7 @@ export function FirstItemPrompt({
   };
 
   return (
-    <div className="flex-1 flex items-start justify-center px-4 py-10 md:py-16 overflow-y-auto">
+    <div className="flex-1 flex items-start justify-center px-4 py-6 md:py-16 overflow-y-auto">
       <section aria-labelledby="first-item-heading" className="w-full max-w-md space-y-4">
         <div className="space-y-1.5">
           <h2 id="first-item-heading" className="text-lg font-semibold">

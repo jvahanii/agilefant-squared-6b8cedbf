@@ -32,6 +32,9 @@ import { FilterBar } from "./listPanel/FilterBar";
 import { FirstItemPrompt } from "./listPanel/FirstItemPrompt";
 import { GettingStarted } from "./listPanel/GettingStarted";
 import { firstList } from "./listPanel/firstList";
+import { useOrgIsEmpty } from "./listPanel/useOrgIsEmpty";
+import { countNodes, takeTriedList } from "@/lib/tryList";
+import { toast } from "@/hooks/use-toast";
 import { ListHeader, ResultsHeader } from "./listPanel/ListHeader";
 import { FilterResultsList, SearchResultsList } from "./listPanel/SearchResults";
 import { useItemSearch, type SearchResult } from "./listPanel/useItemSearch";
@@ -131,6 +134,7 @@ export function WorkItemTreePanel() {
   const expandedWorkItems = useAppStore((s) => s.expandedWorkItems);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
   const bulkAddWorkItems = useAppStore((s) => s.bulkAddWorkItems);
+  const addWorkItemTree = useAppStore((s) => s.addWorkItemTree);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
@@ -143,12 +147,11 @@ export function WorkItemTreePanel() {
   const labelsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.labelsEnabled ?? false);
   const boardsVisible = useOrgSettingsStore((s) => s.settings[activeOrgId ?? ""]?.boardsEnabled ?? false);
   const isMobile = useIsMobile();
-  const isLoading = useAppStore((s) => s.isLoading);
 
   // No items at all once everything has loaded: a new account, or one emptied
   // since. The panel then asks for a first item, for the selected list or,
   // with none selected, the first list of the first tree.
-  const orgIsEmpty = !isLoading && !workItemsLoading && !workItemsRefreshing && Object.keys(workItems).length === 0;
+  const orgIsEmpty = useOrgIsEmpty();
   const firstItemPlace = orgIsEmpty
     ? selectedBacklogId && selectedTreeId && backlogs[selectedBacklogId]
       ? { treeId: selectedTreeId, backlogId: selectedBacklogId }
@@ -162,6 +165,26 @@ export function WorkItemTreePanel() {
     if (titles.length === 1) addWorkItem(titles[0], null, backlogId, treeId, 0);
     else bulkAddWorkItems(titles, null, backlogId, treeId);
   };
+  // A list made on /try before signing up comes in once, where the first
+  // item would have gone, nesting and done marks included.
+  const placeKey = firstItemPlace ? `${firstItemPlace.treeId} ${firstItemPlace.backlogId}` : null;
+  useEffect(() => {
+    if (!firstItemPlace) return;
+    const tried = takeTriedList();
+    if (!tried) return;
+    const { backlogId, treeId } = firstItemPlace;
+    if (selectedBacklogId !== backlogId) selectBacklog(backlogId, treeId);
+    addWorkItemTree(tried, backlogId, treeId);
+    const n = countNodes(tried);
+    const where = [backlogTrees[treeId]?.name, backlogs[backlogId]?.name].filter(Boolean).join(" › ");
+    toast({
+      title: "Your list from the try-out is here",
+      description: `${n} ${n === 1 ? "item" : "items"}${where ? `, in ${where}` : ""}.`,
+    });
+    // Once per place: the list leaves storage the first time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placeKey]);
+
   const firstItemPrompt = firstItemPlace ? (
     <FirstItemPrompt
       listName={backlogs[firstItemPlace.backlogId]?.name ?? "this list"}
@@ -597,7 +620,11 @@ export function WorkItemTreePanel() {
           lastSelectedId.current = null;
         }}
       >
-        <FilterBar search={search} filters={filters} labelsVisible={labelsVisible} onOpen={openSearchResult} />
+        {/* Nothing to filter while the panel asks for a first item; on a
+            phone it would also push the prompt further down. */}
+        {!(firstItemPrompt && !isSearchMode && !isFilterMode && !isAdding) && (
+          <FilterBar search={search} filters={filters} labelsVisible={labelsVisible} onOpen={openSearchResult} />
+        )}
 
         {!isSearchMode && !isFilterMode && (!selectedBacklogId || !selectedTreeId) && firstItemPrompt ? (
           firstItemPrompt

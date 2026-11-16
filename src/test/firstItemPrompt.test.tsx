@@ -4,13 +4,14 @@
  * (2026-11-16: 15 of 34 new users never changed anything).
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 // What the next organisations update answers, and what it was asked.
 const db = vi.hoisted(() => ({
   orgUpdate: { data: [] as unknown[], error: null as unknown },
   updates: [] as Array<{ table: string; values: unknown }>,
+  upserts: [] as Array<{ table: string; rows: unknown }>,
 }));
 
 vi.mock("@/integrations/supabase/client", () => {
@@ -20,6 +21,10 @@ vi.mock("@/integrations/supabase/client", () => {
     for (const m of ["select", "eq", "in", "order", "range", "limit", "gte", "upsert", "insert", "delete", "maybeSingle", "single"]) {
       b[m] = () => b;
     }
+    b.upsert = (rows: unknown) => {
+      db.upserts.push({ table, rows });
+      return b;
+    };
     b.update = (values: unknown) => {
       updating = true;
       db.updates.push({ table, values });
@@ -51,6 +56,7 @@ import { useOrgStore } from "@/store/orgStore";
 import { starterContent } from "@/store/starterContent";
 import { scopeMockDataToOrganization } from "@/store/sync/writes";
 import type { WorkItem } from "@/types/models";
+import { saveTryList, TRY_LIST_KEY, type TryItem } from "@/lib/tryList";
 
 const ORG = "org";
 const starter = scopeMockDataToOrganization(ORG, structuredClone(starterContent));
@@ -108,6 +114,8 @@ describe("the first-item prompt", () => {
     expect(screen.getByRole("heading", { name: "Add your first item" })).toBeTruthy();
     expect(screen.getByText("My work › Now")).toBeTruthy();
     expect(screen.queryByText("Select a list to view work items")).toBeNull();
+    // Nothing to filter yet, and on a phone it pushed the box down.
+    expect(screen.queryByPlaceholderText(/Filter items/)).toBeNull();
   });
 
   it("adds the item to the first list and opens that list", () => {
@@ -123,6 +131,7 @@ describe("the first-item prompt", () => {
     expect(items[0].backlogAssignments[TREE]).toBe(NOW);
     expect(state.selectedBacklogIds).toEqual([NOW]);
     expect(screen.queryByRole("heading", { name: "Add your first item" })).toBeNull();
+    expect(screen.getByPlaceholderText(/Filter items/)).toBeTruthy();
   });
 
   it("does nothing with an empty title", () => {
@@ -346,5 +355,74 @@ describe("firstList", () => {
       ),
     ).toEqual({ treeId: "b", backlogId: "b1" });
     expect(firstList({}, {})).toBeNull();
+  });
+});
+
+describe("a list made on /try before signing up", () => {
+  const tried: TryItem[] = [
+    { id: "1", title: "Plan the kick-off", depth: 0, done: false },
+    { id: "2", title: "Book a room", depth: 1, done: true },
+    { id: "3", title: "Send invites", depth: 1, done: false },
+    { id: "4", title: "Renew passport", depth: 0, done: false },
+  ];
+  beforeEach(() => {
+    localStorage.clear();
+    seed({ undoStack: [], redoStack: [] });
+  });
+
+  it("comes into the new account's first list once, nested, with its done marks, as one undo step", () => {
+    saveTryList(tried);
+    renderPanel();
+    const state = useAppStore.getState();
+    const items = Object.values(state.workItems) as WorkItem[];
+    const byTitle = Object.fromEntries(items.map((i) => [i.title, i]));
+    expect(items).toHaveLength(4);
+    const parent = byTitle["Plan the kick-off"];
+    expect(parent.parentId).toBeNull();
+    expect(parent.status).toBe("in_progress");
+    expect(parent.childrenIds.map((id) => state.workItems[id].title)).toEqual(["Book a room", "Send invites"]);
+    expect(byTitle["Book a room"]).toMatchObject({ parentId: parent.id, status: "done" });
+    expect(byTitle["Renew passport"].ranks[NOW]).toBeGreaterThan(parent.ranks[NOW]);
+    expect(items.every((i) => i.backlogAssignments[TREE] === NOW)).toBe(true);
+    expect(state.selectedBacklogIds).toEqual([NOW]);
+    expect(state.undoStack).toHaveLength(1);
+    expect(localStorage.getItem(TRY_LIST_KEY)).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Add your first item" })).toBeNull();
+  });
+
+  it("is saved in one request, so no child reaches the database before its parent", async () => {
+    saveTryList(tried);
+    db.upserts = [];
+    renderPanel();
+    await waitFor(() => expect(db.upserts.some((u) => u.table === "work_items")).toBe(true));
+    const saves = db.upserts.filter((u) => u.table === "work_items");
+    expect(saves).toHaveLength(1);
+    const rows = saves[0].rows as Array<{ title: string; parent_id: string | null }>;
+    expect(rows.map((r) => r.title).sort()).toEqual(["Book a room", "Plan the kick-off", "Renew passport", "Send invites"]);
+    expect(rows.filter((r) => r.parent_id !== null)).toHaveLength(2);
+  });
+
+  it("is left alone by an account that already has items", () => {
+    saveTryList(tried);
+    const existing = { id: `${ORG}::wi-1`, title: "Old", parentId: null, childrenIds: [], status: "not_started", ranks: { [NOW]: 0 }, backlogAssignments: { [TREE]: NOW }, organizationId: ORG } as WorkItem;
+    seed({ workItems: { [existing.id]: existing }, selectedTreeId: TREE, selectedBacklogIds: [NOW] });
+    renderPanel();
+    expect(Object.keys(useAppStore.getState().workItems)).toEqual([existing.id]);
+    expect(localStorage.getItem(TRY_LIST_KEY)).not.toBeNull();
+  });
+
+  it("is not brought in while the items are still loading", () => {
+    saveTryList(tried);
+    seed({ workItemsLoading: true });
+    renderPanel();
+    expect(useAppStore.getState().workItems).toEqual({});
+    expect(localStorage.getItem(TRY_LIST_KEY)).not.toBeNull();
+  });
+
+  it("is not brought in after a week", () => {
+    saveTryList(tried, new Date(Date.now() - 8 * 86_400_000));
+    renderPanel();
+    expect(useAppStore.getState().workItems).toEqual({});
+    expect(screen.getByRole("heading", { name: "Add your first item" })).toBeTruthy();
   });
 });

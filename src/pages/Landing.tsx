@@ -294,8 +294,9 @@ export default function Landing() {
                 >
                   Free forever <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
-                <Link to="/auth" className="inline-flex items-center rounded-md border bg-card px-5 py-2.5 font-medium hover:bg-muted">
-                  Sign in
+                {/* Sign in stays in the header; here, a way to look before signing up. */}
+                <Link to="/try" className="inline-flex items-center rounded-md border bg-card px-5 py-2.5 font-medium hover:bg-muted">
+                  Try it first, no account
                 </Link>
               </div>
             </div>
@@ -414,6 +415,13 @@ export default function Landing() {
             >
               Get started <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
+            <p className="mt-4 text-sm text-primary-foreground/85">
+              Or{" "}
+              <Link to="/try" className="underline underline-offset-2 hover:text-primary-foreground">
+                try it here first
+              </Link>
+              , without an account.
+            </p>
           </div>
         </section>
       </main>
