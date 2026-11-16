@@ -1,3 +1,4 @@
+import { useWebAnalytics } from '@/lib/webAnalytics';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +18,7 @@ function slugify(value: string): string {
 const DUPLICATE_KEY_CODE = '23505';
 
 export default function Onboarding() {
+  useWebAnalytics();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { createOrganization, loadMemberships } = useOrgStore();

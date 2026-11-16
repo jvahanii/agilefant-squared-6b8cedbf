@@ -1,3 +1,4 @@
+import { useWebAnalytics } from "@/lib/webAnalytics";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -241,6 +242,7 @@ function ProductPreview() {
 }
 
 export default function Landing() {
+  useWebAnalytics();
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/85 backdrop-blur">

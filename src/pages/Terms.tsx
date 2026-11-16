@@ -1,9 +1,11 @@
+import { useWebAnalytics } from "@/lib/webAnalytics";
 import { FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TermsContent } from "@/components/TermsContent";
 
 /** The terms and privacy notice, readable before signing up. Public, like the user guide. */
 export default function Terms() {
+  useWebAnalytics();
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b px-4 sm:px-6 py-4 flex items-center justify-between shrink-0">

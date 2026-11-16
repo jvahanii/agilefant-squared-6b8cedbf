@@ -1,3 +1,4 @@
+import { useWebAnalytics } from "@/lib/webAnalytics";
 import { Link } from "react-router-dom";
 import { PublicGuide, Section, SubHeading, P, Ul, Ol, Em, Code, Dl, Callout } from "@/components/PublicGuide";
 import { CAREER_PAGE_SOURCES } from "../../supabase/functions/_shared/careerPages";
@@ -82,6 +83,7 @@ const BOARDS: { name: string; searched: string; note?: string }[] = [
 ];
 
 export default function JobAdsGuide() {
+  useWebAnalytics();
   return (
     <PublicGuide
       documentTitle="Job ad import guide – Agilefant²"

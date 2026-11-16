@@ -1,3 +1,4 @@
+import { useWebAnalytics } from "@/lib/webAnalytics";
 import { PublicGuide, Section, SubHeading, P, Ul, Em, Code, Dl, Callout } from "@/components/PublicGuide";
 
 /**
@@ -35,6 +36,7 @@ const STATUSES: [string, string][] = [
 ];
 
 export default function JiraGuide() {
+  useWebAnalytics();
   return (
     <PublicGuide
       documentTitle="Jira integration guide – Agilefant²"

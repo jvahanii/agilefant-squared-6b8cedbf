@@ -17,7 +17,7 @@ export const PRIVACY_CONTACT = "jvahanii@gmail.com";
 export const SERVICES: ReadonlyArray<{ name: string; does: string; where: string; when?: string }> = [
   { name: "Supabase", does: "Database, file storage and server functions: where your data is kept", where: "EU (Stockholm, Sweden)" },
   { name: "Clerk", does: "Sign-in: your name, email address, profile picture and how you sign in", where: "USA" },
-  { name: "Cloudflare", does: "Delivers the web app to your browser", where: "Worldwide network" },
+  { name: "Cloudflare", does: "Delivers the web app to your browser, and counts visits to the public pages", where: "Worldwide network" },
   { name: "Resend", does: "Sends the getting-started email the day after you sign up: your name and email address", where: "USA" },
   { name: "Stripe", does: "Payments; we never see your card details", where: "USA and EU", when: "if you subscribe" },
   { name: "Google", does: "Gmail import, and signing in with Google", where: "USA", when: "if you use them" },
@@ -100,15 +100,22 @@ export function TermsContent() {
           <strong>Server logs</strong> with your IP address and browser, kept by our hosting providers.
         </li>
         <li>
+          <strong>Visitor counts</strong> for the public pages (the front page, sign-in and sign-up, these terms and
+          the guides) and the first page of a new account, with Cloudflare Web Analytics: which pages are viewed,
+          from what kind of browser and country. It uses no cookies, keeps nothing in your browser and does not
+          record who you are or follow you to other sites.
+        </li>
+        <li>
           <strong>In your browser:</strong> the sign-in cookies Clerk needs, and a copy of your data so the app opens
-          quickly. There is no analytics, advertising or tracking.
+          quickly. There is no advertising or tracking.
         </li>
       </ul>
 
       <Heading>Why, and on what grounds</Heading>
       <p>
         To provide the service you signed up for (GDPR article 6(1)(b), a contract), and to keep it secure and
-        working, with logs and backups (article 6(1)(f), legitimate interests). We do not sell your data or use it for
+        working, with logs and backups, and to see how many visitors go on to sign up (article 6(1)(f), legitimate
+        interests). We do not sell your data or use it for
         advertising.
       </p>
       <p>

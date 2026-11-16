@@ -1,8 +1,10 @@
+import { useWebAnalytics } from "@/lib/webAnalytics";
 import { BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { UserGuideContent } from "@/components/UserGuideDialog";
 
 export default function UserGuide() {
+  useWebAnalytics();
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b px-4 sm:px-6 py-4 flex items-center justify-between shrink-0">

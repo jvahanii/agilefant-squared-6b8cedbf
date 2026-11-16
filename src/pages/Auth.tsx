@@ -1,3 +1,4 @@
+import { useWebAnalytics } from "@/lib/webAnalytics";
 import { Link } from "react-router-dom";
 import { SignIn, SignUp } from "@clerk/clerk-react";
 import { clerkEnabled } from "@/lib/clerkBridge";
@@ -19,6 +20,7 @@ import { Info } from "lucide-react";
  * site.
  */
 export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up" }) {
+  useWebAnalytics();
   const appearance = { elements: { rootBox: "w-full", card: "w-full shadow-none border" } };
 
   // Clerk is the only way in now, and its components throw outside
