@@ -27,6 +27,9 @@ vi.mock("@/integrations/supabase/client", () => {
 
 import { WorkItemTreePanel } from "@/components/WorkItemTreePanel";
 import { firstList } from "@/components/listPanel/firstList";
+import { itemLines, MAX_PASTED_ITEMS } from "@/components/listPanel/itemLines";
+import { gettingStartedSteps, NEW_ORG_DAYS } from "@/components/listPanel/startSteps";
+import { toIsoDate } from "@/lib/deadlineFormat";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { starterContent } from "@/store/starterContent";
@@ -131,6 +134,131 @@ describe("the first-item prompt", () => {
     seed({ workItemsLoading: true });
     renderPanel();
     expect(screen.queryByRole("heading", { name: "Add your first item" })).toBeNull();
+  });
+});
+
+describe("pasting a list into the first-item box", () => {
+  beforeEach(() => seed());
+
+  const type = (value: string) => {
+    const input = screen.getByRole("textbox", { name: "First item" });
+    fireEvent.change(input, { target: { value } });
+    return input;
+  };
+  const titlesInNow = () =>
+    (Object.values(useAppStore.getState().workItems) as WorkItem[])
+      .filter((i) => i.backlogAssignments[TREE] === NOW)
+      .sort((a, b) => a.ranks[NOW] - b.ranks[NOW])
+      .map((i) => i.title);
+
+  it("adds one item per line, in order, without the list markers", () => {
+    renderPanel();
+    type("- [ ] Book the venue\n\n2. Send invites\r\n• Order coffee  \n");
+    expect(screen.getByRole("button", { name: "Add 3 items" })).toBeTruthy();
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Add 3 items" }));
+    });
+    expect(titlesInNow()).toEqual(["Book the venue", "Send invites", "Order coffee"]);
+    expect(useAppStore.getState().selectedBacklogIds).toEqual([NOW]);
+  });
+
+  it("adds on Enter, but Shift+Enter is a new line", () => {
+    renderPanel();
+    const input = type("One");
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+    expect(useAppStore.getState().workItems).toEqual({});
+    act(() => {
+      fireEvent.keyDown(input, { key: "Enter" });
+    });
+    expect(titlesInNow()).toEqual(["One"]);
+  });
+
+  it("adds at most a hundred from one paste, and says so", () => {
+    renderPanel();
+    type(Array.from({ length: 150 }, (_, i) => `Line ${i + 1}`).join("\n"));
+    expect(screen.getByRole("status").textContent).toContain("first 100");
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: `Add ${MAX_PASTED_ITEMS} items` }));
+    });
+    const titles = titlesInNow();
+    expect(titles).toHaveLength(MAX_PASTED_ITEMS);
+    expect(titles.at(-1)).toBe("Line 100");
+  });
+
+  it("keeps titles that only look like markers", () => {
+    expect(itemLines("3.5 hours of review\n-5 degrees outside\n2024 plan\n[x] Shipped")).toEqual([
+      "3.5 hours of review",
+      "-5 degrees outside",
+      "2024 plan",
+      "Shipped",
+    ]);
+  });
+});
+
+describe("the getting-started steps", () => {
+  const today = new Date(2026, 10, 16);
+  const item = (id: string, extra: Partial<WorkItem> = {}) =>
+    ({
+      id: `${ORG}::${id}`, title: id, status: "not_started", parentId: null, childrenIds: [],
+      backlogAssignments: { [TREE]: NOW }, ranks: { [NOW]: 0 }, organizationId: ORG,
+      createdOn: toIsoDate(new Date()), ...extra,
+    }) as unknown as WorkItem;
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("tick off from the items themselves", () => {
+    const fresh = (extra: Partial<WorkItem> = {}) => item("a", { createdOn: "2026-11-15", ...extra });
+    expect(gettingStartedSteps([fresh()], today)).toEqual([
+      { key: "more", done: false },
+      { key: "nest", done: false },
+      { key: "done", done: false },
+    ]);
+    expect(
+      gettingStartedSteps([fresh(), fresh({ parentId: "x" }), fresh({ status: "done" })], today)?.every((s) => s.done),
+    ).toBe(true);
+  });
+
+  it("are only for a new organisation", () => {
+    expect(gettingStartedSteps([], today)).toBeNull();
+    const old = new Date(today);
+    old.setDate(old.getDate() - NEW_ORG_DAYS - 1);
+    expect(gettingStartedSteps([item("a", { createdOn: "2026-11-15" }), item("b", { createdOn: toIsoDate(old) })], today)).toBeNull();
+    expect(gettingStartedSteps([item("a", { createdOn: undefined })], today)).toBeNull();
+  });
+
+  it("appear once the first item is added, and stay closed once closed", () => {
+    seed();
+    const { unmount } = renderPanel();
+    expect(screen.queryByRole("heading", { name: "Getting started" })).toBeNull();
+    fireEvent.change(screen.getByRole("textbox", { name: "First item" }), { target: { value: "First" } });
+    act(() => {
+      fireEvent.submit(screen.getByRole("textbox", { name: "First item" }).closest("form")!);
+    });
+    expect(screen.getByRole("heading", { name: "Getting started" })).toBeTruthy();
+    expect(screen.getByText("0 of 3 done")).toBeTruthy();
+    expect(screen.getByText(/press Tab/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close getting started" }));
+    expect(screen.queryByRole("heading", { name: "Getting started" })).toBeNull();
+    unmount();
+    renderPanel();
+    expect(screen.getByText("1 item")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Getting started" })).toBeNull();
+  });
+
+  it("say when the basics are done", () => {
+    seed({
+      workItems: Object.fromEntries(
+        [item("a"), item("b", { parentId: `${ORG}::a` }), item("c", { status: "done" })].map((i) => [i.id, i]),
+      ),
+      selectedTreeId: TREE,
+      selectedBacklogIds: [NOW],
+    });
+    renderPanel();
+    expect(screen.getByRole("heading", { name: "That's the basics" })).toBeTruthy();
+    expect(screen.getByText("3 of 3 done")).toBeTruthy();
   });
 });
 

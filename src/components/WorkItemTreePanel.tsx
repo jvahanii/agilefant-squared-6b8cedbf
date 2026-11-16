@@ -30,6 +30,7 @@ import { InlineWorkItemInput } from "./workItemRow/InlineWorkItemInput";
 import { WorkItemNode } from "./workItemRow/WorkItemRow";
 import { FilterBar } from "./listPanel/FilterBar";
 import { FirstItemPrompt } from "./listPanel/FirstItemPrompt";
+import { GettingStarted } from "./listPanel/GettingStarted";
 import { firstList } from "./listPanel/firstList";
 import { ListHeader, ResultsHeader } from "./listPanel/ListHeader";
 import { FilterResultsList, SearchResultsList } from "./listPanel/SearchResults";
@@ -129,6 +130,7 @@ export function WorkItemTreePanel() {
   const backlogTrees = useAppStore((s) => s.backlogTrees);
   const expandedWorkItems = useAppStore((s) => s.expandedWorkItems);
   const addWorkItem = useAppStore((s) => s.addWorkItem);
+  const bulkAddWorkItems = useAppStore((s) => s.bulkAddWorkItems);
   const selectWorkItem = useAppStore((s) => s.selectWorkItem);
   const selectBacklog = useAppStore((s) => s.selectBacklog);
   const clearWorkItemSelection = useAppStore((s) => s.clearWorkItemSelection);
@@ -149,10 +151,13 @@ export function WorkItemTreePanel() {
       ? { treeId: selectedTreeId, backlogId: selectedBacklogId }
       : firstList(backlogTrees, backlogs)
     : null;
-  const addFirstItem = (title: string) => {
-    if (!firstItemPlace) return;
-    if (selectedBacklogId !== firstItemPlace.backlogId) selectBacklog(firstItemPlace.backlogId, firstItemPlace.treeId);
-    addWorkItem(title, null, firstItemPlace.backlogId, firstItemPlace.treeId, 0);
+  const addFirstItem = (titles: string[]) => {
+    if (!firstItemPlace || titles.length === 0) return;
+    const { backlogId, treeId } = firstItemPlace;
+    if (selectedBacklogId !== backlogId) selectBacklog(backlogId, treeId);
+    // A pasted list keeps its order, top line first.
+    if (titles.length === 1) addWorkItem(titles[0], null, backlogId, treeId, 0);
+    else bulkAddWorkItems(titles, null, backlogId, treeId);
   };
   const firstItemPrompt = firstItemPlace ? (
     <FirstItemPrompt
@@ -717,6 +722,7 @@ export function WorkItemTreePanel() {
                 </div>
               </div>
             )}
+            {activeOrgId && <GettingStarted key={activeOrgId} orgId={activeOrgId} workItems={workItems} />}
           </div>
         </WorkItemRootDropZone>
         )}
