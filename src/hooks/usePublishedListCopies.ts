@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
-import { claimSync, copyPublishedList, syncPublishedListCopies, takeListToCopy } from "@/lib/listCopy";
+import { ALREADY_HERE, claimSync, copyPublishedList, fillCopies, takeListToCopy } from "@/lib/listCopy";
 import { useAppStore } from "@/store/appStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 
@@ -36,23 +36,32 @@ export function usePublishedListCopies(orgId: string | null, loaded: boolean): v
       copyPublishedList(token, orgId)
         .then(async (res) => {
           if (cancelled) return;
+          let added = res.added;
+          if (res.more) {
+            toast({ title: "Copying the list…", description: "A long list takes a moment." });
+            added += await fillCopies(orgId);
+          }
           // The copy switches ratings on, and deadlines when the list has them.
           await Promise.all([useAppStore.getState().loadFromSupabase(), useOrgSettingsStore.getState().loadSettings(orgId)]);
           openWhenLoaded(res.backlogId, res.treeId);
           toast({
             title: res.existing ? "You already have this list" : "The list is in your account",
             description: res.existing
-              ? res.added > 0
-                ? `${ads(res.added)} added since you copied it.`
+              ? added > 0
+                ? `${ads(added)} added since you copied it.`
                 : "Its new ads are added as they are published."
-              : `${ads(res.added)} copied. New ads are added as they are published, and nothing you work on is removed.`,
+              : `${ads(added)} copied. New ads are added as they are published, and nothing you work on is removed.`,
           });
         })
         .catch((e: Error) => {
-          toast({ title: "The list could not be copied", description: e.message, variant: "destructive" });
+          toast(
+            e.message === ALREADY_HERE
+              ? { title: ALREADY_HERE, description: "Its ads are here already: there is nothing to copy." }
+              : { title: "The list could not be copied", description: e.message, variant: "destructive" },
+          );
         });
     } else if (claimSync(orgId)) {
-      syncPublishedListCopies(orgId)
+      fillCopies(orgId)
         .then(async (added) => {
           if (cancelled || added === 0) return;
           await useAppStore.getState().loadFromSupabase();

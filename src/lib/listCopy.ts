@@ -21,7 +21,15 @@ export interface CopyResult {
   backlogId: string;
   added: number;
   existing: boolean;
+  /** More items to add: the database adds them in batches (migration 20261117090000). */
+  more?: boolean;
 }
+
+/** The database's word for a list copied into the organisation it comes from. */
+export const ALREADY_HERE = "This list is already in this organisation";
+
+/** Most batches one round of filling asks for: 30 x 150 items. */
+export const MAX_BATCHES = 30;
 
 export function rememberListToCopy(token: string, now = new Date()): void {
   try {
@@ -64,9 +72,24 @@ export function claimSync(orgId: string, now = Date.now()): boolean {
   }
 }
 
-/** Adds the new items of every list copied into the organisation; how many came. */
+/** Adds a batch of new items to every list copied into the organisation; how many came. */
 export async function syncPublishedListCopies(orgId: string): Promise<number> {
   const { data, error } = await supabase.rpc("sync_published_list_copies" as never, { _organization_id: orgId } as never);
   if (error) throw new Error(error.message);
   return typeof data === "number" ? data : 0;
+}
+
+/**
+ * Batch after batch until no more items come: each call stays well within
+ * the database's limit for one request (8 s), which a whole list in one
+ * call did not.
+ */
+export async function fillCopies(orgId: string): Promise<number> {
+  let total = 0;
+  for (let i = 0; i < MAX_BATCHES; i++) {
+    const added = await syncPublishedListCopies(orgId);
+    if (added === 0) break;
+    total += added;
+  }
+  return total;
 }

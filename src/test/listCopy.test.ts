@@ -81,6 +81,31 @@ describe("in the app", () => {
     expect(toast.mock.calls[0][0].description).toMatch(/^12 ads copied\. New ads are added/);
   });
 
+  it("fills a long list in batches, each within the database's limit for one request", async () => {
+    rememberListToCopy(TOKEN);
+    rpc.mockImplementation((name: string) => {
+      if (name === "copy_published_list") return Promise.resolve({ data: { treeId: "t", backlogId: "b", added: 150, existing: false, more: true }, error: null });
+      const left = rpc.mock.calls.filter(([n]) => n === "sync_published_list_copies").length;
+      return Promise.resolve({ data: left <= 9 ? 150 : left === 10 ? 128 : 0, error: null });
+    });
+    renderHook(() => usePublishedListCopies(ORG, true));
+    await waitFor(() => expect(toast.mock.calls.some(([t]) => t.title === "The list is in your account")).toBe(true));
+    expect(toast.mock.calls[0][0]).toMatchObject({ title: "Copying the list…" });
+    const done = toast.mock.calls.find(([t]) => t.title === "The list is in your account")![0];
+    expect(done.description).toMatch(/^1628 ads copied/);
+  });
+
+  it("explains, without alarm, that a list cannot be copied into its own organisation", async () => {
+    rememberListToCopy(TOKEN);
+    rpc.mockResolvedValue({ data: null, error: { message: "This list is already in this organisation" } });
+    renderHook(() => usePublishedListCopies(ORG, true));
+    await waitFor(() => expect(toast).toHaveBeenCalled());
+    expect(toast.mock.calls[0][0]).toEqual({
+      title: "This list is already in this organisation",
+      description: "Its ads are here already: there is nothing to copy.",
+    });
+  });
+
   it("waits until the organisation's data has loaded", () => {
     rememberListToCopy(TOKEN);
     renderHook(() => usePublishedListCopies(ORG, false));
@@ -96,12 +121,13 @@ describe("in the app", () => {
     expect(toast.mock.calls[0][0]).toMatchObject({ title: "The list could not be copied", description: "This list is no longer public" });
   });
 
-  it("otherwise brings copies their new items, telling only when some came", async () => {
-    rpc.mockResolvedValue({ data: 3, error: null });
+  it("otherwise brings copies their new items, batch after batch, telling only when some came", async () => {
+    rpc.mockResolvedValueOnce({ data: 150, error: null }).mockResolvedValueOnce({ data: 3, error: null }).mockResolvedValue({ data: 0, error: null });
     const first = renderHook(() => usePublishedListCopies(ORG, true));
     await waitFor(() => expect(toast).toHaveBeenCalled());
     expect(rpc).toHaveBeenCalledWith("sync_published_list_copies", { _organization_id: ORG });
-    expect(toast.mock.calls[0][0]).toMatchObject({ title: "3 ads added to your copied lists" });
+    expect(rpc).toHaveBeenCalledTimes(3);
+    expect(toast.mock.calls[0][0]).toMatchObject({ title: "153 ads added to your copied lists" });
     first.unmount();
 
     // Within the hour: not asked again.
@@ -149,5 +175,30 @@ describe("the database functions", () => {
     expect(code.match(/is_member_of\(_uid, _organization_id\)/g)?.length).toBe(2);
     expect(code).toMatch(/REVOKE ALL ON public\.published_list_copies FROM PUBLIC, anon, authenticated/);
     expect(code).toMatch(/REVOKE ALL ON public\.published_list_copy_items FROM PUBLIC, anon, authenticated/);
+  });
+});
+
+describe("the batch migration (20261117090000)", () => {
+  const code = readFileSync(join(process.cwd(), "supabase/migrations/20261117090000_copy_in_batches.sql"), "utf8").replace(/--[^\n]*/g, "");
+
+  it("adds at most a batch per call, in the list's order", () => {
+    expect(code).toContain("LIMIT greatest(coalesce(_limit, 150), 1)");
+    expect(code).toContain("'more', _added >= _batch");
+  });
+
+  it("refuses the list's own organisation and those it is shared with", () => {
+    expect(code).toContain("_link.organization_id = _organization_id");
+    expect(code).toContain("s.tree_id = _link.tree_id AND s.organization_id = _organization_id");
+  });
+
+  it("still never removes or changes an item already in a copy", () => {
+    expect(code).not.toMatch(/DELETE\s+FROM\s+public\.work_items/i);
+    expect(code).not.toMatch(/UPDATE\s+public\.work_items/i);
+  });
+
+  it("keeps the inner function out of reach and the outer ones for signed-in members", () => {
+    expect(code).toContain("REVOKE EXECUTE ON FUNCTION public.add_new_published_items(uuid, jsonb, integer) FROM PUBLIC, anon, authenticated");
+    expect(code).toContain("GRANT EXECUTE ON FUNCTION public.sync_published_list_copies(uuid, integer) TO authenticated, service_role");
+    expect(code.match(/TO anon/g)).toBeNull();
   });
 });
