@@ -12,9 +12,11 @@ import { join } from "node:path";
 type Handler = (msg: { payload: unknown }) => void;
 const opened: Array<{ name: string; config?: { config?: { private?: boolean } }; kind?: string; handler?: Handler }> = [];
 const status = vi.hoisted(() => ({ refuse: false }));
+const order = vi.hoisted(() => [] as string[]);
 
 vi.mock("@/integrations/supabase/client", () => {
   const channel = (name: string, config?: { config?: { private?: boolean } }) => {
+    order.push(`channel ${name}`);
     const entry: (typeof opened)[number] = { name, config };
     opened.push(entry);
     const ch = {
@@ -29,7 +31,13 @@ vi.mock("@/integrations/supabase/client", () => {
     };
     return ch;
   };
-  return { supabase: { channel, removeChannel: () => {}, from: () => ({}) } };
+  const realtime = {
+    setAuth: async () => {
+      await new Promise((r) => setTimeout(r, 0));
+      order.push("setAuth");
+    },
+  };
+  return { supabase: { channel, removeChannel: () => {}, from: () => ({}), realtime } };
 });
 
 vi.mock("@/lib/realtimeHealth", () => ({
@@ -74,6 +82,7 @@ function Host() {
 
 beforeEach(() => {
   opened.length = 0;
+  order.length = 0;
   calls = [];
   status.refuse = false;
   setLiveUpdatesByBroadcast(true);
@@ -103,6 +112,13 @@ describe("live updates by broadcast", () => {
       ["org:org", true, "broadcast"],
       ["user:me", true, "broadcast"],
     ]);
+  });
+
+  it("hand Realtime the person's token before joining, so the join is not a signed-out visitor's", async () => {
+    render(<Host />);
+    await settle();
+    await settle();
+    expect(order).toEqual(["setAuth", "channel org:org", "channel user:me"]);
   });
 
   it("apply a change of ours, and a partner's only where it is in a tree we can see", () => {

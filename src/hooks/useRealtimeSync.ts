@@ -247,6 +247,23 @@ export function applyBroadcastChange(b: BroadcastChange, ownOrgId: string): void
   OWN_UNFILTERED.find((t) => t.table === b.table)?.on(asPayload(b));
 }
 
+/**
+ * Hands Realtime the signed-in person's token now, rather than when its socket
+ * opens. A channel's join carries the token only if Realtime already has it;
+ * on a fresh socket it does not yet (it asks for it when the socket opens, too
+ * late), so the join went out with the public key alone, as a signed-out
+ * visitor. Postgres changes let that pass; a private channel refuses it. Seen
+ * on 2026-11-17: every fresh load fell back to Postgres changes.
+ */
+async function ensureRealtimeToken(): Promise<void> {
+  const realtime = (supabase as unknown as { realtime?: { setAuth?: (token?: string | null) => Promise<void> } }).realtime;
+  try {
+    await realtime?.setAuth?.();
+  } catch (e) {
+    console.warn('Live updates: could not hand over the token before joining.', e);
+  }
+}
+
 /** A refusal, not a network fault: the database's rule turned the channel down. */
 const refused = (status: string, error?: Error) =>
   status === 'CHANNEL_ERROR' && /unauthori[sz]ed|permission|not allowed|denied/i.test(error?.message ?? '');
@@ -362,16 +379,18 @@ export function useRealtimeSync() {
     if (!activeOrgId || !broadcast) return;
     const unsubscribers: Array<() => void> = [];
     let destroyed = false;
-    unsubscribers.push(
-      subscribeWithHealth(
-        () =>
-          supabase
-            .channel(`org:${activeOrgId}`, { config: { private: true } })
-            .on('broadcast', { event: 'change' }, ({ payload }) => applyBroadcastChange(payload as BroadcastChange, activeOrgId)),
-        fallBackIfRefused,
-      ),
-    );
     (async () => {
+      await ensureRealtimeToken();
+      if (destroyed) return;
+      unsubscribers.push(
+        subscribeWithHealth(
+          () =>
+            supabase
+              .channel(`org:${activeOrgId}`, { config: { private: true } })
+              .on('broadcast', { event: 'change' }, ({ payload }) => applyBroadcastChange(payload as BroadcastChange, activeOrgId)),
+          fallBackIfRefused,
+        ),
+      );
       const userId = await getCurrentUserId();
       if (!userId || destroyed) return;
       unsubscribers.push(
