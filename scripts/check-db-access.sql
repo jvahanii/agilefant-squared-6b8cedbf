@@ -9,7 +9,10 @@
 
 WITH allowed_for_anon(name) AS (
   -- What a public link page calls. See AUTH.md, "Public links".
-  VALUES ('get_published_backlog'), ('get_published_link_features')
+  -- get_published_backlog_last: the list as last built, while a fresh one is slow.
+  VALUES ('get_published_backlog'), ('get_published_link_features'), ('get_published_backlog_last'),
+  -- What the invite page asks before anyone signs in: the organisation's name.
+         ('get_invite')
 )
 SELECT 'function' AS kind,
        p.oid::regprocedure::text AS name,
