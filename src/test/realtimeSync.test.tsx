@@ -46,7 +46,7 @@ vi.mock("@/store/supabaseSync", async (importOriginal) => ({
   readOutgoingShares: async () => ({ data: [{ organization_id: "out" }, { organization_id: "partner" }], error: null }),
 }));
 
-import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { setLiveUpdatesByBroadcast, useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
 import { useTimeEntryStore } from "@/store/timeEntryStore";
@@ -105,6 +105,8 @@ beforeEach(async () => {
   bindings.length = 0;
   calls = [];
   stubStores();
+  // These pin the fallback, Postgres changes; broadcast is in realtimeBroadcast.test.tsx.
+  setLiveUpdatesByBroadcast(false);
   useOrgStore.setState({ activeOrgId: "org" });
   useAppStore.setState({
     backlogTrees: { "org::t1": { id: "org::t1" }, "partner::t2": { id: "partner::t2" } },

@@ -25,9 +25,11 @@ describe("the backlog_tree_shares table", () => {
     expect(listeners).toEqual(["pages/Index.tsx"]);
   });
 
-  it("refreshes the share icons from that listener", () => {
+  it("refreshes the share icons from that listener, by broadcast or Postgres changes alike", () => {
     const index = readFileSync(join(src, "pages", "Index.tsx"), "utf8");
-    const handler = index.slice(index.indexOf("table: 'backlog_tree_shares'"));
+    const handler = index.slice(index.indexOf("const sharesChanged = () => {"));
     expect(handler.slice(0, 400)).toContain("useTreeSharesStore.getState().refresh()");
+    expect(index).toContain("if (liveByBroadcast) return onTreeSharesChanged(sharesChanged);");
+    expect(index).toContain("{ event: '*', schema: 'public', table: 'backlog_tree_shares' }, sharesChanged)");
   });
 });

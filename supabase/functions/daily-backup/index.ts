@@ -1,4 +1,6 @@
-// Daily backup job – invoked by pg_cron. Iterates all organizations and snapshots each.
+// Daily backup job – invoked by pg_cron. Iterates all organizations and snapshots
+// each one that changed since its newest backup (create_organization_backup_if_changed,
+// 2026-11-17): unchanged ones keep their newest, as the retention rules say.
 // Authentication: requires either
 //   1) Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>  (used by pg_cron via pg_net.http_post), or
 //   2) Authorization: Bearer <user JWT> where the user is a superuser.
@@ -64,23 +66,24 @@ Deno.serve(async (req) => {
   }
 
   let ok = 0;
+  let unchanged = 0;
   let failed = 0;
   for (const o of orgs ?? []) {
-    const { error: rpcError } = await admin.rpc("create_organization_backup", {
+    const { data: backupId, error: rpcError } = await admin.rpc("create_organization_backup_if_changed", {
       _org_id: o.id,
-      _kind: "auto",
-      _note: null,
     });
     if (rpcError) {
       failed++;
       console.error("backup failed for org", o.id, rpcError.message);
-    } else {
+    } else if (backupId) {
       ok++;
+    } else {
+      unchanged++;
     }
   }
 
   // Do NOT leak organization IDs in the response body.
-  return new Response(JSON.stringify({ ok, failed, total: orgs?.length ?? 0 }), {
+  return new Response(JSON.stringify({ ok, unchanged, failed, total: orgs?.length ?? 0 }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });

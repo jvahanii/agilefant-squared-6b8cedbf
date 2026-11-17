@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUserId } from '@/lib/currentUser';
@@ -171,6 +171,92 @@ const OWN_UNFILTERED: Array<{ table: string; on: (payload: Payload) => void }> =
   },
 ];
 
+/**
+ * Live updates come by broadcast (migration 20261117100000): a trigger on
+ * each table sends one message per change to the private channel of each
+ * organisation it concerns (org:<id>; a snooze to user:<id>), and the app
+ * listens to its own two. Postgres changes, below, had Realtime poll the
+ * database and check every change against every subscription: by far the
+ * largest use of database time on an instance that was swapping itself out
+ * of its disk budget (2026-11-17).
+ *
+ * Should a private channel be refused, the page falls back to Postgres
+ * changes for the rest of its life, so live updates never just stop.
+ */
+let byBroadcast = true;
+const modeListeners = new Set<() => void>();
+export function setLiveUpdatesByBroadcast(on: boolean): void {
+  if (byBroadcast === on) return;
+  byBroadcast = on;
+  modeListeners.forEach((l) => l());
+}
+const subscribeMode = (l: () => void) => {
+  modeListeners.add(l);
+  return () => {
+    modeListeners.delete(l);
+  };
+};
+
+/** One change as the trigger sends it; no row for tables whose rows hold secrets. */
+export interface BroadcastChange {
+  table: string;
+  op: Change;
+  row?: Row;
+}
+
+/** The change in the shape Postgres changes gave, for handlers that take that. */
+const asPayload = (b: BroadcastChange): Payload =>
+  ({
+    eventType: b.op,
+    new: b.op === 'DELETE' ? {} : (b.row ?? {}),
+    old: b.op === 'DELETE' ? (b.row ?? {}) : {},
+    table: b.table,
+    schema: 'public',
+  }) as unknown as Payload;
+
+/** Whether live updates come by broadcast: false once a private channel was refused. */
+export function useLiveUpdatesByBroadcast(): boolean {
+  return useSyncExternalStore(subscribeMode, () => byBroadcast);
+}
+
+// Who is told when a tree's shares change (the page, which reloads), since
+// with broadcast that change comes on the organisation's channel too.
+const treeShareListeners = new Set<() => void>();
+export function onTreeSharesChanged(listener: () => void): () => void {
+  treeShareListeners.add(listener);
+  return () => {
+    treeShareListeners.delete(listener);
+  };
+}
+
+/** What a broadcast change does: the same as the Postgres change it replaces. */
+export function applyBroadcastChange(b: BroadcastChange, ownOrgId: string): void {
+  if (b.table === 'backlog_tree_shares') {
+    treeShareListeners.forEach((l) => l());
+    return;
+  }
+  const org = ORG_TABLES.find((t) => t.table === b.table);
+  if (org) {
+    const row = b.row ?? {};
+    const fromOther = b.op !== 'DELETE' && row.organization_id !== ownOrgId;
+    if (fromOther && (org.ownOnly || (org.partnerSees && !org.partnerSees(row)))) return;
+    if (org.whole) org.whole(asPayload(b));
+    else org.apply?.(b.op, row);
+    return;
+  }
+  OWN_UNFILTERED.find((t) => t.table === b.table)?.on(asPayload(b));
+}
+
+/** A refusal, not a network fault: the database's rule turned the channel down. */
+const refused = (status: string, error?: Error) =>
+  status === 'CHANNEL_ERROR' && /unauthori[sz]ed|permission|not allowed|denied/i.test(error?.message ?? '');
+
+const fallBackIfRefused = (status: string, error?: Error) => {
+  if (!refused(status, error)) return;
+  console.warn('Live updates: the private channel was refused, using Postgres changes instead.', error?.message);
+  setLiveUpdatesByBroadcast(false);
+};
+
 /** A Realtime filter for rows of these organisations. */
 function orgFilter(orgIds: string[]): string {
   return orgIds.length === 1 ? `organization_id=eq.${orgIds[0]}` : `organization_id=in.(${orgIds.join(',')})`;
@@ -232,6 +318,7 @@ function buildOrgChannel(name: string, ownOrgId: string, partnerOrgIds: string[]
 export function useRealtimeSync() {
   const activeOrgId = useOrgStore((s) => s.activeOrgId);
   const backlogTrees = useAppStore((s) => s.backlogTrees);
+  const broadcast = useLiveUpdatesByBroadcast();
 
   // Coming back to the tab: reconnect if the socket died while it was hidden,
   // and after a long absence catch up on what was missed. Nothing did this
@@ -269,8 +356,46 @@ export function useRealtimeSync() {
   // channel whenever a tree is added or removed.
   const hasOwnTrees = Object.keys(backlogTrees).some((id) => id.startsWith(`${activeOrgId}::`));
 
+  // By broadcast: our organisation's channel and our own. Partners' changes
+  // to what they share with us come on ours: the trigger sends them there.
   useEffect(() => {
-    if (!activeOrgId) return;
+    if (!activeOrgId || !broadcast) return;
+    const unsubscribers: Array<() => void> = [];
+    let destroyed = false;
+    unsubscribers.push(
+      subscribeWithHealth(
+        () =>
+          supabase
+            .channel(`org:${activeOrgId}`, { config: { private: true } })
+            .on('broadcast', { event: 'change' }, ({ payload }) => applyBroadcastChange(payload as BroadcastChange, activeOrgId)),
+        fallBackIfRefused,
+      ),
+    );
+    (async () => {
+      const userId = await getCurrentUserId();
+      if (!userId || destroyed) return;
+      unsubscribers.push(
+        subscribeWithHealth(
+          () =>
+            supabase
+              .channel(`user:${userId}`, { config: { private: true } })
+              .on('broadcast', { event: 'change' }, ({ payload }) => {
+                const b = payload as BroadcastChange;
+                if (b.table === 'work_item_snoozes' && b.row) useSnoozeStore.getState().applyRealtimeSnooze(b.op, b.row);
+              }),
+          fallBackIfRefused,
+        ),
+      );
+    })();
+    return () => {
+      destroyed = true;
+      for (const unsubscribe of unsubscribers) unsubscribe();
+    };
+  }, [activeOrgId, broadcast]);
+
+  // The fallback: Postgres changes.
+  useEffect(() => {
+    if (!activeOrgId || broadcast) return;
 
     const accessibleTreeIds = new Set(Object.keys(useAppStore.getState().backlogTrees));
 
@@ -342,5 +467,5 @@ export function useRealtimeSync() {
     // trees with this one — the only change that alters which channels exist.
     // A tree shared *out* after this ran is picked up by the next resync rather
     // than by rebuilding every channel on each tree edit.
-  }, [activeOrgId, partnerOrgsKey, hasOwnTrees]);
+  }, [activeOrgId, partnerOrgsKey, hasOwnTrees, broadcast]);
 }

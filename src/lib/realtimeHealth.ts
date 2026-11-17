@@ -321,7 +321,11 @@ type RealtimeChannel = ReturnType<typeof supabase.channel>;
  * capped backoff. Health is keyed by topic, which the new instance shares, so
  * its SUBSCRIBED counts as the recovery and brings the catch-up resync.
  */
-export function subscribeWithHealth(build: () => RealtimeChannel): () => void {
+export function subscribeWithHealth(
+  build: () => RealtimeChannel,
+  /** Told of every status, with realtime-js's error when there is one. */
+  onStatus?: (status: string, error?: Error) => void,
+): () => void {
   let current: RealtimeChannel | null = build();
   const topic = current.topic;
   let attempt = 0;
@@ -330,9 +334,10 @@ export function subscribeWithHealth(build: () => RealtimeChannel): () => void {
   let waitingForVisible: (() => void) | null = null;
 
   const attach = (channel: RealtimeChannel) => {
-    channel.subscribe((status) => {
+    channel.subscribe((status, error) => {
       // A replaced instance still reports, not least the CLOSED its removal emits.
       if (stopped || channel !== current) return;
+      onStatus?.(status, error);
       const outage = getOutageDurationMs();
       const recovered = markChannelStatus(topic, status);
       if (status === 'SUBSCRIBED') {

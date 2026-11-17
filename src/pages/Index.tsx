@@ -7,7 +7,7 @@ import { useTimeEntryStore } from '@/store/timeEntryStore';
 import { useRespawnCheck } from '@/hooks/useRespawnCheck';
 import { usePublishedListCopies } from '@/hooks/usePublishedListCopies';
 import { usePendingInvite } from '@/hooks/usePendingInvite';
-import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+import { onTreeSharesChanged, useLiveUpdatesByBroadcast, useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { useResyncOnWake } from '@/hooks/useResyncOnWake';
 import { usePasteImageOnSelected } from '@/hooks/usePasteImageOnSelected';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,31 +88,33 @@ const Index = () => {
   // Also reload time entries so partner-org logged time becomes visible.
   // The only listener on this table: the tree panel's share icons are
   // refreshed from here too, rather than over a second subscription.
+  // By broadcast, the change comes on the organisation's channel
+  // (useRealtimeSync); otherwise over a Postgres-changes channel of its own.
+  const liveByBroadcast = useLiveUpdatesByBroadcast();
   useEffect(() => {
     if (!activeOrgId) return;
 
+    const sharesChanged = () => {
+      // Who our trees are shared with has changed: read it again.
+      forgetOutgoingShares();
+      useTreeSharesStore.getState().refresh();
+      loadData().then(() => {
+        if (isTimeLoggingEnabled(activeOrgId)) {
+          loadTimeEntries(activeOrgId);
+        }
+      });
+    };
+    if (liveByBroadcast) return onTreeSharesChanged(sharesChanged);
+
     const channel = supabase
       .channel(`share-data-reload-${activeOrgId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'backlog_tree_shares' },
-        () => {
-          // Who our trees are shared with has changed: read it again.
-          forgetOutgoingShares();
-          useTreeSharesStore.getState().refresh();
-          loadData().then(() => {
-            if (isTimeLoggingEnabled(activeOrgId)) {
-              loadTimeEntries(activeOrgId);
-            }
-          });
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'backlog_tree_shares' }, sharesChanged)
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   // loadData and loadTimeEntries are stable Zustand action references; omitting them is intentional.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeOrgId]);
+  }, [activeOrgId, liveByBroadcast]);
 
   // Load labels for active org + any partner orgs whose trees are accessible.
   const treeIdsKey = Object.keys(backlogTrees).sort().join(',');
