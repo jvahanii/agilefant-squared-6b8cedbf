@@ -627,7 +627,14 @@ export function safeLinkHref(raw: string): string | null {
  * Longer each time: a busy stretch lasts seconds, and asking again at once
  * only adds to it.
  */
-export const PUBLIC_LOAD_RETRY_MS: readonly number[] = [1200, 3000, 6000];
+export const PUBLIC_LOAD_RETRY_MS: readonly number[] = [1500, 4000, 9000];
+
+/**
+ * A wait of about the given length: anywhere from three quarters of it to one
+ * and a quarter. Many visitors who failed together then ask again apart,
+ * rather than all at the same moment into a database that is already busy.
+ */
+export const spreadWait = (ms: number, random: () => number = Math.random) => Math.round(ms * (0.75 + random() * 0.5));
 
 /**
  * Asks, and asks again after each wait for as long as the answer is an error.
@@ -641,8 +648,43 @@ export async function askPatiently<T extends { error: unknown }>(
   let answer = await ask();
   for (const wait of waits) {
     if (!answer.error) break;
-    await new Promise((resolve) => setTimeout(resolve, wait));
+    await new Promise((resolve) => setTimeout(resolve, spreadWait(wait)));
     answer = await ask();
   }
   return answer;
+}
+
+/** What Cloudflare gives for a public link (functions/api/public-list). */
+export interface CloudflareList {
+  /** The list, or null: no such link, or public links are off. */
+  list: unknown;
+  features: unknown;
+  /** When Cloudflare fetched it from the database. */
+  at: string;
+  /** An older copy, given because the database did not answer. */
+  spare?: boolean;
+}
+
+/** How long the page waits for Cloudflare, which itself waits 8 seconds for the database. */
+export const CLOUDFLARE_WAIT_MS = 12_000;
+
+/**
+ * A public link's list as Cloudflare keeps it, or null when it cannot be had
+ * that way: Cloudflare could not reach the database and kept nothing, or the
+ * app is not served by Cloudflare at all (the development server answers
+ * with the app's own page, not with a list).
+ */
+export async function askCloudflare(token: string, waitMs = CLOUDFLARE_WAIT_MS): Promise<CloudflareList | null> {
+  try {
+    const response = await fetch(`/api/public-list/${encodeURIComponent(token)}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(waitMs),
+    });
+    if (!response.ok || !(response.headers.get("Content-Type") ?? "").includes("application/json")) return null;
+    const body = (await response.json()) as Partial<CloudflareList>;
+    if (!body || !("list" in body) || typeof body.at !== "string") return null;
+    return { list: body.list ?? null, features: body.features ?? null, at: body.at, spare: body.spare === true };
+  } catch {
+    return null;
+  }
 }

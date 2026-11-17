@@ -11,6 +11,7 @@ import { StarRating } from "@/components/StarRating";
 import { formatDeadline, isDeadlinePassed } from "@/lib/deadlineFormat";
 import { formatDuration } from "@/lib/formatDuration";
 import {
+  askCloudflare,
   askPatiently,
   backlogScope,
   buildBacklogTree,
@@ -129,6 +130,25 @@ export default function PublicBacklog() {
 
   /** Whether the list came. A list that did not leaves one already shown where it is. */
   const load = useCallback(async (): Promise<boolean> => {
+    const applyFeatures = (answer: { jobFilters?: boolean; finnish?: Record<string, "required" | "not_required"> } | null) => {
+      setJobFiltersOn(answer?.jobFilters === true);
+      setFinnishByItem(answer?.finnish ?? {});
+    };
+    // Cloudflare's copy first: it asks the database at most once a minute
+    // however many people open or refresh the page.
+    const edge = await askCloudflare(token);
+    if (edge) {
+      if (edge.features) applyFeatures(edge.features as Parameters<typeof applyFeatures>[0]);
+      if (!edge.list) {
+        setState({ status: "missing" });
+      } else {
+        const payload = edge.list as PublishedPayload;
+        setState({ status: "ready", payload, asOf: edge.spare ? edge.at : undefined });
+      }
+      return true;
+    }
+    // Not to be had (the database did not answer and nothing was kept, or
+    // the app runs without Cloudflare): ask the database, as before.
     let fresh = false;
     // The list as last built, while the fresh one is slow or when it fails:
     // an older list is worth more to a reader than a wait or an apology.
@@ -154,9 +174,7 @@ export default function PublicBacklog() {
       ).catch(() => null),
     ]);
     if (features && !features.error) {
-      const answer = features.data as { jobFilters?: boolean; finnish?: Record<string, "required" | "not_required"> } | null;
-      setJobFiltersOn(answer?.jobFilters === true);
-      setFinnishByItem(answer?.finnish ?? {});
+      applyFeatures(features.data as Parameters<typeof applyFeatures>[0]);
     }
     clearTimeout(slow);
     if (error) {
