@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { DelayedLoading } from "@/components/DelayedLoading";
+import { CannotReach } from "@/components/CannotReach";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useOrgStore } from "@/store/orgStore";
@@ -72,7 +73,7 @@ const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { user, loading: authLoading, unlinkedClerk, signOut } = useAuth();
-  const { memberships, activeOrgId, loading: orgLoading, loadMemberships } = useOrgStore();
+  const { memberships, activeOrgId, loading: orgLoading, loadMemberships, unreachable: membershipsUnreachable } = useOrgStore();
   const retriedAppLoadRef = useRef<string | null>(null);
   const retriedMembershipLoadRef = useRef<string | null>(null);
 
@@ -186,6 +187,13 @@ function AppRoutes() {
         </Routes>
       </Suspense>
     );
+  }
+
+  // No memberships because they could not be loaded is not a new account:
+  // say so and try again, rather than send them to Onboarding, which would
+  // make them an organisation of their own.
+  if (memberships.length === 0 && membershipsUnreachable) {
+    return <CannotReach onRetry={() => void loadMemberships(user.id)} />;
   }
 
   if (memberships.length === 0) {

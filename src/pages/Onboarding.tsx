@@ -27,7 +27,9 @@ export default function Onboarding() {
   const attempted = useRef(false);
 
   useEffect(() => {
-    if (!user || attempted.current) return;
+    // Only for an account that has no organisations, never for one whose
+    // organisations could not be loaded (App.tsx shows that instead).
+    if (!user || attempted.current || useOrgStore.getState().unreachable) return;
     attempted.current = true;
 
     const currentUser = user;

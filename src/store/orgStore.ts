@@ -25,6 +25,13 @@ interface OrgState {
   activeOrgName: string | null;
   loading: boolean;
   /**
+   * The memberships could not be loaded (an error, or no answer in 10 s).
+   * Not the same as having none: an empty list then is not a new account,
+   * and must not send anyone to Onboarding, which would make them a new
+   * organisation (2026-11-17, while the database was down).
+   */
+  unreachable: boolean;
+  /**
    * Superuser-only role override. When set, getActiveOrg() returns this role
    * instead of the user's true membership role so superusers can preview how
    * the app looks for owners/admins/members without creating new accounts.
@@ -99,6 +106,7 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
   activeOrgId: null,
   activeOrgName: null,
   loading: true,
+  unreachable: false,
   roleOverride: (() => {
     const v = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('roleOverride') : null;
     return v === 'owner' || v === 'admin' || v === 'member' ? v : null;
@@ -119,7 +127,7 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
       const activeOrgId = cached.memberships.find(m => m.organization_id === stored)
         ? stored
         : cached.memberships[0]?.organization_id ?? null;
-      set({ memberships: cached.memberships, activeOrgId, loading: false });
+      set({ memberships: cached.memberships, activeOrgId, loading: false, unreachable: false });
       // Fire a background refresh so the data stays fresh.
       void (async () => {
         const { data, error } = await withSupabaseRetry(() =>
@@ -144,7 +152,7 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
     const timeoutId = setTimeout(() => {
       if (get().loading) {
         console.warn('loadMemberships: timed out after 10 s, clearing loading state');
-        set({ loading: false });
+        set({ loading: false, unreachable: true });
       }
     }, 10000);
 
@@ -156,7 +164,7 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
 
     if (error) {
       console.error('loadMemberships:', error);
-      set({ loading: false });
+      set({ loading: false, unreachable: true });
       return;
     }
     const memberships = (data ?? []) as Membership[];
@@ -165,7 +173,7 @@ export const useOrgStore = create<OrgState>()((set, get) => ({
     const activeOrgId = memberships.find(m => m.organization_id === stored)
       ? stored
       : memberships[0]?.organization_id ?? null;
-    set({ memberships, activeOrgId, loading: false });
+    set({ memberships, activeOrgId, loading: false, unreachable: false });
   },
 
   setActiveOrg: (orgId: string, orgName?: string) => {
