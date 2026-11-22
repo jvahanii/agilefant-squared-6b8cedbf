@@ -1,7 +1,8 @@
 /**
  * The keys the list answers itself, beside the global shortcuts (lib/shortcuts):
  * Tab and Shift+Tab move the selection in and out a level; Insert adds an
- * item; and a row the selection needs is brought into view first.
+ * item; a row's number, typed, selects it; and a row the selection needs is
+ * brought into view first.
  */
 import { useEffect, useRef, type MutableRefObject } from "react";
 import { useAppStore } from "@/store/appStore";
@@ -183,6 +184,88 @@ export function useAddShortcuts(startAdding: () => void) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+}
+
+/** How long after a digit the next key still belongs to the same row number. */
+const ROW_NUMBER_PAUSE_MS = 1500;
+
+/**
+ * A row's number, typed, selects the row: at each digit, so 1 and then 2
+ * passes through row 1 on the way to row 12, and nothing waits for a pause.
+ *
+ * A number no row has selects nothing, so that a D typed after it cannot
+ * change row 1 when row 15 was meant. Backspace takes back a digit for as long
+ * as the number is being typed: passed on, it would delete the row just
+ * selected. Any other key, or a click, ends the number.
+ */
+export function useRowNumberKeys(
+  /** The numbers the rows show; null while the numbered list is not shown. */
+  numbers: ReadonlyMap<string, number> | null,
+  /** The list shown: another one starts a new number. */
+  listId: string | null,
+  select: (id: string) => void,
+) {
+  const latest = useRef({ numbers, select });
+  latest.current = { numbers, select };
+  const shown = numbers !== null;
+
+  useEffect(() => {
+    if (!shown) return;
+    let typed = "";
+    let typedAt = -Infinity;
+    const endNumber = () => {
+      typed = "";
+      typedAt = -Infinity;
+    };
+
+    const selectTyped = () => {
+      const wanted = Number(typed);
+      const id = [...(latest.current.numbers ?? [])].find(([, n]) => n === wanted)?.[0];
+      if (id) {
+        latest.current.select(id);
+        return;
+      }
+      useAppStore.getState().clearWorkItemSelection();
+      if (typed) toast({ title: `No row ${typed}` });
+    };
+
+    const handler = (e: KeyboardEvent) => {
+      // Shift is how some keyboards type a digit, so it does not end a number.
+      if (e.key === "Shift" || e.key === "CapsLock" || e.key === "NumLock") return;
+
+      const now = Date.now();
+      const typing = now - typedAt < ROW_NUMBER_PAUSE_MS;
+      const digit = /^[0-9]$/.test(e.key);
+      const correcting = typing && e.key === "Backspace";
+      const target = e.target as HTMLElement;
+      const inField = ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable;
+      if ((!digit && !correcting) || e.ctrlKey || e.metaKey || e.altKey || inField || overlayOpen()) {
+        endNumber();
+        return;
+      }
+
+      if (!typing) typed = "";
+      // No row's number starts with 0, and an empty list has none to type.
+      if (digit && ((!typed && e.key === "0") || !latest.current.numbers?.size)) return;
+
+      e.preventDefault();
+      if (correcting) e.stopImmediatePropagation();
+      // A key held down is one digit, not a row of them.
+      if (digit && e.repeat) return;
+
+      typed = digit ? typed + e.key : typed.slice(0, -1);
+      typedAt = now;
+      selectTyped();
+    };
+
+    // Ahead of the global shortcuts, which delete on Backspace.
+    window.addEventListener("keydown", handler, true);
+    window.addEventListener("pointerdown", endNumber, true);
+    return () => {
+      window.removeEventListener("keydown", handler, true);
+      window.removeEventListener("pointerdown", endNumber, true);
+    };
+  }, [shown, listId]);
 }
 
 /** Bring into view the rows the arrow keys and the selection's shortcuts need. */

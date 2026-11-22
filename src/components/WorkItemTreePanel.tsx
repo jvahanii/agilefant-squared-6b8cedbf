@@ -40,7 +40,7 @@ import { ListHeader, ResultsHeader } from "./listPanel/ListHeader";
 import { FilterResultsList, SearchResultsList } from "./listPanel/SearchResults";
 import { useItemSearch, type SearchResult } from "./listPanel/useItemSearch";
 import { useListFilters } from "./listPanel/useListFilters";
-import { useAddShortcuts, useRevealRows, useTabReparent } from "./listPanel/useListKeys";
+import { useAddShortcuts, useRevealRows, useRowNumberKeys, useTabReparent } from "./listPanel/useListKeys";
 
 function ReorderDropZone({
   id,
@@ -510,6 +510,21 @@ export function WorkItemTreePanel() {
     },
     [selectWorkItem],
   );
+
+  // Only the tree shows running numbers: not the board, the timeline, or the
+  // results, which count their own.
+  const numberedListShown =
+    !!selectedBacklogId &&
+    !!selectedTreeId &&
+    !isSearchMode &&
+    !isFilterMode &&
+    !showTimeline &&
+    !(boardsVisible && viewMode === "board");
+  useRowNumberKeys(numberedListShown ? runningNumbers : null, selectedBacklogId, (id) => {
+    // As a click on the row: a Shift+click afterwards ranges from it.
+    handleSelect(id, false, false);
+    scrollToWorkItem(id);
+  });
 
   /**
    * Go to an item from the results: open its list and the items above it, and

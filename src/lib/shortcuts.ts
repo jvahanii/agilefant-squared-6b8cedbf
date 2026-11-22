@@ -401,6 +401,12 @@ export const SHORTCUTS: Shortcut[] = [
     run: stepSelection,
   },
   {
+    // Handled by WorkItemTreePanel, which numbers the rows.
+    id: "select-by-number",
+    group: "Navigation",
+    rows: [{ keys: ["0–9"], description: "Type a row's number to select it (Backspace corrects it while typing)" }],
+  },
+  {
     id: "expand",
     group: "Navigation",
     rows: [{ keys: ["→"], description: "Expand selected item or list branch" }],
