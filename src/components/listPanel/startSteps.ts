@@ -10,23 +10,50 @@ export interface Step {
   done: boolean;
 }
 
+/** An item found old enough to say the organisation is not new. */
+let settledBy: string | null = null;
+
 /**
  * The getting-started steps and whether each is done, read from the items
  * themselves so they tick off wherever the person does them. Null for an
  * organisation with no items (the first-item prompt is showing) or one that
  * is not new: an item older than NEW_ORG_DAYS, or of unknown age, means it
  * has been in use for a while.
+ *
+ * Asked at every change to any item. For an organisation in use one old item
+ * settles it, so the one found last time is looked up first: going through
+ * thousands of items took a few milliseconds of every key press.
  */
-export function gettingStartedSteps(items: WorkItem[], today: Date = new Date()): Step[] | null {
-  if (items.length === 0) return null;
+export function gettingStartedSteps(
+  items: WorkItem[] | Record<string, WorkItem>,
+  today: Date = new Date(),
+): Step[] | null {
   const cutoff = new Date(today);
   cutoff.setDate(cutoff.getDate() - NEW_ORG_DAYS);
   const oldest = toIsoDate(cutoff);
-  if (items.some((i) => !i.createdOn || i.createdOn < oldest)) return null;
+  const isOld = (i: WorkItem) => !i.createdOn || i.createdOn < oldest;
+  if (!Array.isArray(items) && settledBy !== null) {
+    const known = items[settledBy];
+    if (known && isOld(known)) return null;
+  }
+  const all = Array.isArray(items) ? items : Object.values(items);
+  let count = 0;
+  let nested = false;
+  let done = false;
+  for (const i of all) {
+    if (isOld(i)) {
+      settledBy = i.id;
+      return null;
+    }
+    count++;
+    nested ||= !!i.parentId;
+    done ||= i.status === "done";
+  }
+  if (count === 0) return null;
   return [
-    { key: "more", done: items.length >= 3 },
-    { key: "nest", done: items.some((i) => !!i.parentId) },
-    { key: "done", done: items.some((i) => i.status === "done") },
+    { key: "more", done: count >= 3 },
+    { key: "nest", done: nested },
+    { key: "done", done },
   ];
 }
 

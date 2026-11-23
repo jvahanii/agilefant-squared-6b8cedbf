@@ -142,9 +142,11 @@ function AppLayoutInner({ banner, tryOut }: { banner?: ReactNode; tryOut: boolea
   const { user } = useAuth();
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
-  const undoStackLength = useAppStore((s) => s.undoStack.length);
-  const redoStackLength = useAppStore((s) => s.redoStack.length);
-  const changeLog = useAppStore((s) => s.changeLog);
+  // Whether there is anything to undo or redo, not how much, and not the
+  // change log: both change with every edit, and this draws the whole page.
+  // Following them, every key press drew everything on the page again.
+  const canUndo = useAppStore((s) => s.undoStack.length > 0);
+  const canRedo = useAppStore((s) => s.redoStack.length > 0);
 
   const [activeDrag, setActiveDrag] = useState<{ id: string; type: string; title: string; count?: number } | null>(null);
   const [pendingCrossTree, setPendingCrossTree] = useState<PendingCrossTreeDrop | null>(null);
@@ -492,6 +494,7 @@ function AppLayoutInner({ banner, tryOut }: { banner?: ReactNode; tryOut: boolea
 
   // Extract handler functions for reuse in mobile menu
   const handleExportChangelog = () => {
+    const changeLog = useAppStore.getState().changeLog;
     if (changeLog.length === 0) {
       toast({ title: "No changes logged yet" });
       return;
@@ -678,9 +681,9 @@ function AppLayoutInner({ banner, tryOut }: { banner?: ReactNode; tryOut: boolea
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
+                      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${canUndo ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
                       onClick={undo}
-                      disabled={undoStackLength === 0}
+                      disabled={!canUndo}
                     >
                       <Undo2 className="w-4 h-4" />
                     </button>
@@ -690,9 +693,9 @@ function AppLayoutInner({ banner, tryOut }: { banner?: ReactNode; tryOut: boolea
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
+                      className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${canRedo ? "text-foreground hover:bg-accent" : "text-muted-foreground/30"}`}
                       onClick={redo}
-                      disabled={redoStackLength === 0}
+                      disabled={!canRedo}
                     >
                       <Redo2 className="w-4 h-4" />
                     </button>
@@ -722,16 +725,16 @@ function AppLayoutInner({ banner, tryOut }: { banner?: ReactNode; tryOut: boolea
             {/* Mobile: undo/redo + overflow menu */}
             <div className="flex md:hidden items-center gap-0.5">
               <button
-                className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${undoStackLength > 0 ? "text-foreground" : "text-muted-foreground/30"}`}
+                className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${canUndo ? "text-foreground" : "text-muted-foreground/30"}`}
                 onClick={undo}
-                disabled={undoStackLength === 0}
+                disabled={!canUndo}
               >
                 <Undo2 className="w-4 h-4" />
               </button>
               <button
-                className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${redoStackLength > 0 ? "text-foreground" : "text-muted-foreground/30"}`}
+                className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${canRedo ? "text-foreground" : "text-muted-foreground/30"}`}
                 onClick={redo}
-                disabled={redoStackLength === 0}
+                disabled={!canRedo}
               >
                 <Redo2 className="w-4 h-4" />
               </button>

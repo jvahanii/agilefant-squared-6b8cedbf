@@ -50,9 +50,10 @@ export function GettingStarted({
   /** The organisation's name, for those who may rename it. */
   org?: { name: string; onRename: (name: string) => Promise<void> };
 }) {
-  const steps = useMemo(() => gettingStartedSteps(Object.values(workItems)), [workItems]);
-  const install = useInstallWay();
   const [closed, setClosed] = useState(() => stepsClosed(orgId));
+  // Worked out at every change to any item, so not at all once closed.
+  const steps = useMemo(() => (closed ? null : gettingStartedSteps(workItems)), [workItems, closed]);
+  const install = useInstallWay();
   // Closing asks one question first: with about three sign-ups a week the
   // counts move slowly, and a sentence says more (2026-11-16).
   const [asking, setAsking] = useState(false);

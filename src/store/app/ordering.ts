@@ -82,10 +82,14 @@ export function orderingActions(set: SetState, get: GetState, internalLog: LogCh
       const updatedItems = { ...state.workItems };
 
       // Determine the backlog ID for each sibling in this tree context and
-      // update only that backlog's rank entry.
+      // update only that backlog's rank entry — and only where it changes.
+      // Moving one item one place changes two ranks; giving every sibling a
+      // new object made each of them a change, so in a list of 1 500 a key
+      // press redrew every row on screen, had every total look at 1 500
+      // items, and saved 1 500 rank rows.
       reordered.forEach((s, i) => {
         const blId = updatedItems[s.id].backlogAssignments[treeId];
-        if (blId) {
+        if (blId && updatedItems[s.id].ranks[blId] !== i) {
           updatedItems[s.id] = {
             ...updatedItems[s.id],
             ranks: { ...updatedItems[s.id].ranks, [blId]: i },
@@ -134,11 +138,13 @@ export function orderingActions(set: SetState, get: GetState, internalLog: LogCh
       }
       if (syncedBoardRows.length > 0) persistBoardRankUpserts(syncedBoardRows);
 
+      // The ranks that changed, as applySiblingOrder saves them.
       persistRankUpserts(
         reordered.flatMap((s) => {
           const updated = updatedItems[s.id];
+          if (updated === state.workItems[s.id]) return [];
           const blId = updated.backlogAssignments[treeId];
-          if (!blId) return [];
+          if (!blId || updated.ranks[blId] === state.workItems[s.id]?.ranks[blId]) return [];
           return { workItemId: updated.id, backlogId: blId, rank: updated.ranks[blId] ?? 0, organizationId: updated.organizationId ?? orgId };
         }),
       );

@@ -4730,12 +4730,6 @@ exports[`ordering > in a list, step by step 1`] = `
           {
             "backlogId": "order-org::b1",
             "organizationId": "order-org",
-            "rank": 0,
-            "workItemId": "order-org::w7",
-          },
-          {
-            "backlogId": "order-org::b1",
-            "organizationId": "order-org",
             "rank": 1,
             "workItemId": "order-org::w4",
           },
@@ -4750,12 +4744,6 @@ exports[`ordering > in a list, step by step 1`] = `
             "organizationId": "order-org",
             "rank": 3,
             "workItemId": "order-org::w1",
-          },
-          {
-            "backlogId": "order-org::b1",
-            "organizationId": "order-org",
-            "rank": 4,
-            "workItemId": "order-org::w10",
           },
         ],
       ],
@@ -4774,12 +4762,6 @@ exports[`ordering > in a list, step by step 1`] = `
         {
           "backlogId": "order-org::b1",
           "organizationId": "order-org",
-          "rank": 0,
-          "workItemId": "order-org::w7",
-        },
-        {
-          "backlogId": "order-org::b1",
-          "organizationId": "order-org",
           "rank": 1,
           "workItemId": "order-org::w4",
         },
@@ -4794,12 +4776,6 @@ exports[`ordering > in a list, step by step 1`] = `
           "organizationId": "order-org",
           "rank": 3,
           "workItemId": "order-org::w1",
-        },
-        {
-          "backlogId": "order-org::b1",
-          "organizationId": "order-org",
-          "rank": 4,
-          "workItemId": "order-org::w10",
         },
       ],
     },
@@ -4828,23 +4804,6 @@ exports[`ordering > in a list, step by step 1`] = `
         "status": "not_started",
         "title": "Zulu",
       },
-      "order-org::w10": {
-        "backlogAssignments": {
-          "order-org::t1": "order-org::b1",
-        },
-        "boardRanks": {
-          "order-org::b1": 2,
-        },
-        "childrenIds": [],
-        "id": "order-org::w10",
-        "organizationId": "order-org",
-        "parentId": null,
-        "ranks": {
-          "order-org::b1": 4,
-        },
-        "status": "not_started",
-        "title": "Bravo",
-      },
       "order-org::w4": {
         "backlogAssignments": {
           "order-org::t1": "order-org::b1",
@@ -4883,66 +4842,13 @@ exports[`ordering > in a list, step by step 1`] = `
         "status": "done",
         "title": "Echo",
       },
-      "order-org::w7": {
-        "backlogAssignments": {
-          "order-org::t1": "order-org::b1",
-        },
-        "boardRanks": {
-          "order-org::b1": 0,
-        },
-        "childrenIds": [],
-        "id": "order-org::w7",
-        "organizationId": "order-org",
-        "parentId": null,
-        "ranks": {
-          "order-org::b1": 0,
-        },
-        "status": "not_started",
-        "title": "Alpha",
-      },
     },
   },
   {
     "backlogTrees": "untouched",
     "backlogs": "untouched",
     "copied": [],
-    "db": [
-      [
-        "upsertWorkItemBacklogRankRowsDetailed",
-        [
-          {
-            "backlogId": "order-org::b1",
-            "organizationId": "order-org",
-            "rank": 0,
-            "workItemId": "order-org::w7",
-          },
-          {
-            "backlogId": "order-org::b1",
-            "organizationId": "order-org",
-            "rank": 1,
-            "workItemId": "order-org::w4",
-          },
-          {
-            "backlogId": "order-org::b1",
-            "organizationId": "order-org",
-            "rank": 2,
-            "workItemId": "order-org::w5",
-          },
-          {
-            "backlogId": "order-org::b1",
-            "organizationId": "order-org",
-            "rank": 3,
-            "workItemId": "order-org::w1",
-          },
-          {
-            "backlogId": "order-org::b1",
-            "organizationId": "order-org",
-            "rank": 4,
-            "workItemId": "order-org::w10",
-          },
-        ],
-      ],
-    ],
+    "db": [],
     "hyperlinks": "untouched",
     "log": [
       [
@@ -4952,40 +4858,7 @@ exports[`ordering > in a list, step by step 1`] = `
       ],
     ],
     "queued": {},
-    "queuedAtOnce": {
-      "pending_work_item_rank_upserts": [
-        {
-          "backlogId": "order-org::b1",
-          "organizationId": "order-org",
-          "rank": 0,
-          "workItemId": "order-org::w7",
-        },
-        {
-          "backlogId": "order-org::b1",
-          "organizationId": "order-org",
-          "rank": 1,
-          "workItemId": "order-org::w4",
-        },
-        {
-          "backlogId": "order-org::b1",
-          "organizationId": "order-org",
-          "rank": 2,
-          "workItemId": "order-org::w5",
-        },
-        {
-          "backlogId": "order-org::b1",
-          "organizationId": "order-org",
-          "rank": 3,
-          "workItemId": "order-org::w1",
-        },
-        {
-          "backlogId": "order-org::b1",
-          "organizationId": "order-org",
-          "rank": 4,
-          "workItemId": "order-org::w10",
-        },
-      ],
-    },
+    "queuedAtOnce": {},
     "redo": 0,
     "returned": undefined,
     "selected": [
@@ -4994,99 +4867,7 @@ exports[`ordering > in a list, step by step 1`] = `
     ],
     "step": "w4 and w5 selected, w5 dragged up one",
     "undo": 4,
-    "workItems": {
-      "order-org::w1": {
-        "backlogAssignments": {
-          "order-org::t1": "order-org::b1",
-        },
-        "boardRanks": {
-          "order-org::b1": 1,
-        },
-        "childrenIds": [
-          "order-org::w2",
-        ],
-        "id": "order-org::w1",
-        "organizationId": "order-org",
-        "parentId": null,
-        "ranks": {
-          "order-org::b1": 3,
-        },
-        "status": "not_started",
-        "title": "Zulu",
-      },
-      "order-org::w10": {
-        "backlogAssignments": {
-          "order-org::t1": "order-org::b1",
-        },
-        "boardRanks": {
-          "order-org::b1": 2,
-        },
-        "childrenIds": [],
-        "id": "order-org::w10",
-        "organizationId": "order-org",
-        "parentId": null,
-        "ranks": {
-          "order-org::b1": 4,
-        },
-        "status": "not_started",
-        "title": "Bravo",
-      },
-      "order-org::w4": {
-        "backlogAssignments": {
-          "order-org::t1": "order-org::b1",
-          "order-org::t2": "order-org::b3",
-        },
-        "boardRanks": {
-          "order-org::b1": 0,
-        },
-        "childrenIds": [
-          "order-org::w8",
-        ],
-        "id": "order-org::w4",
-        "organizationId": "order-org",
-        "parentId": null,
-        "ranks": {
-          "order-org::b1": 1,
-          "order-org::b3": 1,
-        },
-        "status": "in_progress",
-        "title": "Mike",
-      },
-      "order-org::w5": {
-        "backlogAssignments": {
-          "order-org::t1": "order-org::b1",
-        },
-        "boardRanks": {
-          "order-org::b1": 0,
-        },
-        "childrenIds": [],
-        "id": "order-org::w5",
-        "organizationId": "order-org",
-        "parentId": null,
-        "ranks": {
-          "order-org::b1": 2,
-        },
-        "status": "done",
-        "title": "Echo",
-      },
-      "order-org::w7": {
-        "backlogAssignments": {
-          "order-org::t1": "order-org::b1",
-        },
-        "boardRanks": {
-          "order-org::b1": 0,
-        },
-        "childrenIds": [],
-        "id": "order-org::w7",
-        "organizationId": "order-org",
-        "parentId": null,
-        "ranks": {
-          "order-org::b1": 0,
-        },
-        "status": "not_started",
-        "title": "Alpha",
-      },
-    },
+    "workItems": {},
   },
   {
     "backlogTrees": "untouched",
@@ -5096,12 +4877,6 @@ exports[`ordering > in a list, step by step 1`] = `
       [
         "upsertWorkItemBacklogRankRowsDetailed",
         [
-          {
-            "backlogId": "order-org::b1a",
-            "organizationId": "order-org",
-            "rank": 0,
-            "workItemId": "order-org::w9",
-          },
           {
             "backlogId": "order-org::b1",
             "organizationId": "order-org",
@@ -5146,12 +4921,6 @@ exports[`ordering > in a list, step by step 1`] = `
     "queued": {},
     "queuedAtOnce": {
       "pending_work_item_rank_upserts": [
-        {
-          "backlogId": "order-org::b1a",
-          "organizationId": "order-org",
-          "rank": 0,
-          "workItemId": "order-org::w9",
-        },
         {
           "backlogId": "order-org::b1",
           "organizationId": "order-org",
@@ -5284,46 +5053,13 @@ exports[`ordering > in a list, step by step 1`] = `
         "status": "not_started",
         "title": "Alpha",
       },
-      "order-org::w9": {
-        "backlogAssignments": {
-          "order-org::t1": "order-org::b1a",
-        },
-        "boardRanks": {},
-        "childrenIds": [],
-        "id": "order-org::w9",
-        "organizationId": "order-org",
-        "parentId": null,
-        "ranks": {
-          "order-org::b1a": 0,
-        },
-        "status": "not_started",
-        "title": "w9",
-      },
     },
   },
   {
     "backlogTrees": "untouched",
     "backlogs": "untouched",
     "copied": [],
-    "db": [
-      [
-        "upsertWorkItemBacklogRankRowsDetailed",
-        [
-          {
-            "backlogId": "order-org::b3",
-            "organizationId": "order-org",
-            "rank": 0,
-            "workItemId": "order-org::w8",
-          },
-          {
-            "backlogId": "order-org::b3",
-            "organizationId": "order-org",
-            "rank": 1,
-            "workItemId": "order-org::w4",
-          },
-        ],
-      ],
-    ],
+    "db": [],
     "hyperlinks": "untouched",
     "log": [
       [
@@ -5333,22 +5069,7 @@ exports[`ordering > in a list, step by step 1`] = `
       ],
     ],
     "queued": {},
-    "queuedAtOnce": {
-      "pending_work_item_rank_upserts": [
-        {
-          "backlogId": "order-org::b3",
-          "organizationId": "order-org",
-          "rank": 0,
-          "workItemId": "order-org::w8",
-        },
-        {
-          "backlogId": "order-org::b3",
-          "organizationId": "order-org",
-          "rank": 1,
-          "workItemId": "order-org::w4",
-        },
-      ],
-    },
+    "queuedAtOnce": {},
     "redo": 0,
     "returned": undefined,
     "selected": [
@@ -5357,49 +5078,7 @@ exports[`ordering > in a list, step by step 1`] = `
     ],
     "step": "w8, a child here and a root in tree two, to the top of b3",
     "undo": 6,
-    "workItems": {
-      "order-org::w4": {
-        "backlogAssignments": {
-          "order-org::t1": "order-org::b1",
-          "order-org::t2": "order-org::b3",
-        },
-        "boardRanks": {
-          "order-org::b1": 0,
-        },
-        "childrenIds": [
-          "order-org::w8",
-        ],
-        "id": "order-org::w4",
-        "organizationId": "order-org",
-        "parentId": null,
-        "ranks": {
-          "order-org::b1": 2,
-          "order-org::b3": 1,
-        },
-        "status": "in_progress",
-        "title": "Mike",
-      },
-      "order-org::w8": {
-        "backlogAssignments": {
-          "order-org::t1": "order-org::b1",
-          "order-org::t2": "order-org::b3",
-        },
-        "boardRanks": {},
-        "childrenIds": [],
-        "id": "order-org::w8",
-        "organizationId": "order-org",
-        "parentId": "order-org::w4",
-        "parentIds": {
-          "order-org::t2": null,
-        },
-        "ranks": {
-          "order-org::b1": 6,
-          "order-org::b3": 0,
-        },
-        "status": "not_started",
-        "title": "w8",
-      },
-    },
+    "workItems": {},
   },
   {
     "backlogTrees": "untouched",
