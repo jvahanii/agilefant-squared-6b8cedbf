@@ -19,6 +19,8 @@ import { claimSync, hasListToCopy, PENDING_COPY_HOURS, PENDING_COPY_KEY, remembe
 import { usePublishedListCopies } from "@/hooks/usePublishedListCopies";
 import { useAppStore } from "@/store/appStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { starterContent } from "@/store/starterContent";
+import { scopeMockDataToOrganization } from "@/store/sync/writes";
 
 const TOKEN = "test-token-000000000000000000000";
 const ORG = "org-1";
@@ -130,6 +132,57 @@ describe("in the app", () => {
     renderHook(() => usePublishedListCopies(ORG, true));
     await waitFor(() => expect(toast).toHaveBeenCalled());
     expect(useListCopyStore.getState().copying).toBe(false);
+  });
+
+  describe("in an account with only the empty starter", () => {
+    const starter = scopeMockDataToOrganization(ORG, structuredClone(starterContent));
+    const STARTER = Object.keys(starter.backlogTrees)[0];
+    const NOW = starter.backlogTrees[STARTER].rootBacklogIds[0];
+    const deleteBacklogTree = vi.fn();
+    const copied = { b: { id: "b", treeId: "t", childrenIds: [] } };
+    const copiedItem = { id: "c1", backlogAssignments: { t: "b" } };
+
+    const signUpAndCopy = async (state: Record<string, unknown>, answer: unknown) => {
+      rememberListToCopy(TOKEN);
+      rpc.mockResolvedValue(answer);
+      const undoStack = [{ marker: true }];
+      useAppStore.setState({ workItems: {}, ...starter, deleteBacklogTree, undoStack, selectBacklog: vi.fn(), ...state } as never);
+      // The reload brings in the copied tree beside the starter.
+      reload.mockImplementation(async () => {
+        const s = useAppStore.getState();
+        useAppStore.setState({ backlogs: { ...s.backlogs, ...copied }, workItems: { ...s.workItems, c1: copiedItem } } as never);
+      });
+      renderHook(() => usePublishedListCopies(ORG, true));
+      await waitFor(() => expect(toast).toHaveBeenCalled());
+      return undoStack;
+    };
+    beforeEach(() => {
+      deleteBacklogTree.mockReset();
+      reload.mockReset();
+    });
+
+    it("removes the starter once the copied list is open, and not as something to undo", async () => {
+      const undoStack = await signUpAndCopy({}, { data: { treeId: "t", backlogId: "b", added: 1, existing: false }, error: null });
+      expect(deleteBacklogTree).toHaveBeenCalledWith(STARTER);
+      expect(useAppStore.getState().selectBacklog).toHaveBeenCalledWith("b", "t");
+      expect(useAppStore.getState().undoStack).toBe(undoStack);
+    });
+
+    it("keeps the starter when the copy fails", async () => {
+      await signUpAndCopy({}, { data: null, error: { message: "This list is no longer public" } });
+      expect(deleteBacklogTree).not.toHaveBeenCalled();
+    });
+
+    it("keeps a starter that has items, or was renamed", async () => {
+      const item = { id: "i1", backlogAssignments: { [STARTER]: NOW } };
+      await signUpAndCopy({ workItems: { i1: item } }, { data: { treeId: "t", backlogId: "b", added: 1, existing: false }, error: null });
+      expect(deleteBacklogTree).not.toHaveBeenCalled();
+
+      toast.mockReset();
+      const renamed = { ...starter.backlogTrees, [STARTER]: { ...starter.backlogTrees[STARTER], name: "Home" } };
+      await signUpAndCopy({ backlogTrees: renamed }, { data: { treeId: "t", backlogId: "b", added: 1, existing: false }, error: null });
+      expect(deleteBacklogTree).not.toHaveBeenCalled();
+    });
   });
 
   it("explains, without alarm, that a list cannot be copied into its own organisation", async () => {

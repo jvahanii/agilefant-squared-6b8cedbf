@@ -3,13 +3,41 @@ import { toast } from "@/hooks/use-toast";
 import { ALREADY_HERE, claimSync, copyPublishedList, fillCopies, takeListToCopy, useListCopyStore } from "@/lib/listCopy";
 import { useAppStore } from "@/store/appStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
+import { starterShape } from "@/components/listPanel/startPresets";
+import { noItems } from "@/components/listPanel/useOrgIsEmpty";
 
-/** Opens a list once the reload has brought it in. */
-function openWhenLoaded(backlogId: string, treeId: string) {
+/**
+ * The starter tree of an account that has nothing else (startPresets.ts):
+ * one tree, two empty lists, under the names it was given. Someone who
+ * signed up to copy a list came for that list, and an empty "My work" beside
+ * it only asks what it is for (2026-11-24).
+ */
+function untouchedStarter(): string | null {
+  const { workItems, backlogTrees, backlogs } = useAppStore.getState();
+  if (!noItems(workItems)) return null;
+  return starterShape(backlogTrees, backlogs)?.treeId ?? null;
+}
+
+/**
+ * Removes that starter once the copy is open, if it is still empty: taken
+ * off the undo stack too, since nobody removed it by hand.
+ */
+function dropStarter(treeId: string) {
+  const state = useAppStore.getState();
+  if (!state.backlogTrees[treeId]) return;
+  if (Object.values(state.workItems).some((wi) => wi.backlogAssignments[treeId])) return;
+  const undoStack = state.undoStack;
+  state.deleteBacklogTree(treeId);
+  useAppStore.setState({ undoStack });
+}
+
+/** Opens a list once the reload has brought it in, then does what follows. */
+function openWhenLoaded(backlogId: string, treeId: string, then?: () => void) {
   const open = () => {
     const state = useAppStore.getState();
     if (!state.backlogs[backlogId]) return false;
     state.selectBacklog(backlogId, treeId);
+    then?.();
     return true;
   };
   if (open()) return;
@@ -35,6 +63,8 @@ export function usePublishedListCopies(orgId: string | null, loaded: boolean): v
     if (token) {
       useListCopyStore.setState({ copying: true });
       const opened = () => useListCopyStore.setState({ copying: false });
+      // Looked at before the copy arrives, which makes a second tree.
+      const starter = untouchedStarter();
       copyPublishedList(token, orgId)
         .then(async (res) => {
           if (cancelled) return opened();
@@ -43,7 +73,7 @@ export function usePublishedListCopies(orgId: string | null, loaded: boolean): v
           // so a new account lands in the list rather than in an empty one.
           // The copy switches ratings on, and deadlines when the list has them.
           await Promise.all([useAppStore.getState().loadFromSupabase(), useOrgSettingsStore.getState().loadSettings(orgId)]);
-          openWhenLoaded(res.backlogId, res.treeId);
+          openWhenLoaded(res.backlogId, res.treeId, starter && !res.existing && starter !== res.treeId ? () => dropStarter(starter) : undefined);
           opened();
           if (res.more) {
             toast({ title: "Copying the list…", description: `The first ${ads(added)} are here; the rest follow in a moment.` });
