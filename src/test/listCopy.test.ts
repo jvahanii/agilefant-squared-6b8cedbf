@@ -15,7 +15,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 const toast = vi.fn();
 vi.mock("@/hooks/use-toast", () => ({ toast: (...args: unknown[]) => toast(...args) }));
 
-import { claimSync, PENDING_COPY_HOURS, PENDING_COPY_KEY, rememberListToCopy, SYNC_EVERY_MS, takeListToCopy } from "@/lib/listCopy";
+import { claimSync, hasListToCopy, PENDING_COPY_HOURS, PENDING_COPY_KEY, rememberListToCopy, SYNC_EVERY_MS, takeListToCopy, useListCopyStore } from "@/lib/listCopy";
 import { usePublishedListCopies } from "@/hooks/usePublishedListCopies";
 import { useAppStore } from "@/store/appStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
@@ -45,6 +45,14 @@ describe("the request to copy", () => {
     expect(takeListToCopy(at)).toBeNull();
     localStorage.setItem(PENDING_COPY_KEY, "{oops");
     expect(takeListToCopy()).toBeNull();
+  });
+
+  it("can be looked for without taking it", () => {
+    expect(hasListToCopy()).toBe(false);
+    rememberListToCopy(TOKEN);
+    expect(hasListToCopy()).toBe(true);
+    expect(takeListToCopy()).toBe(TOKEN);
+    expect(hasListToCopy()).toBe(false);
   });
 });
 
@@ -93,6 +101,35 @@ describe("in the app", () => {
     expect(toast.mock.calls[0][0]).toMatchObject({ title: "Copying the list…" });
     const done = toast.mock.calls.find(([t]) => t.title === "The list is in your account")![0];
     expect(done.description).toMatch(/^1628 ads copied/);
+  });
+
+  it("opens a long list with its first batch, before the rest are filled", async () => {
+    rememberListToCopy(TOKEN);
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    rpc.mockImplementation(async (name: string) => {
+      if (name === "copy_published_list") return { data: { treeId: "t", backlogId: "b", added: 150, existing: false, more: true }, error: null };
+      await held;
+      return { data: 0, error: null };
+    });
+    const selectBacklog = vi.fn();
+    useAppStore.setState({ backlogs: { b: { id: "b" } }, selectBacklog } as never);
+    renderHook(() => usePublishedListCopies(ORG, true));
+    expect(useListCopyStore.getState().copying).toBe(true);
+    await waitFor(() => expect(selectBacklog).toHaveBeenCalledWith("b", "t"));
+    expect(useListCopyStore.getState().copying).toBe(false);
+    expect(toast.mock.calls[0][0]).toMatchObject({ title: "Copying the list…", description: "The first 150 ads are here; the rest follow in a moment." });
+    expect(toast.mock.calls.some(([t]) => t.title === "The list is in your account")).toBe(false);
+    release();
+    await waitFor(() => expect(toast.mock.calls.some(([t]) => t.title === "The list is in your account")).toBe(true));
+  });
+
+  it("stops waiting when the copy fails", async () => {
+    rememberListToCopy(TOKEN);
+    rpc.mockResolvedValue({ data: null, error: { message: "This list is no longer public" } });
+    renderHook(() => usePublishedListCopies(ORG, true));
+    await waitFor(() => expect(toast).toHaveBeenCalled());
+    expect(useListCopyStore.getState().copying).toBe(false);
   });
 
   it("explains, without alarm, that a list cannot be copied into its own organisation", async () => {

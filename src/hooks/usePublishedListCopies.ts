@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
-import { ALREADY_HERE, claimSync, copyPublishedList, fillCopies, takeListToCopy } from "@/lib/listCopy";
+import { ALREADY_HERE, claimSync, copyPublishedList, fillCopies, takeListToCopy, useListCopyStore } from "@/lib/listCopy";
 import { useAppStore } from "@/store/appStore";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 
@@ -33,17 +33,24 @@ export function usePublishedListCopies(orgId: string | null, loaded: boolean): v
 
     const token = takeListToCopy();
     if (token) {
+      useListCopyStore.setState({ copying: true });
+      const opened = () => useListCopyStore.setState({ copying: false });
       copyPublishedList(token, orgId)
         .then(async (res) => {
-          if (cancelled) return;
+          if (cancelled) return opened();
           let added = res.added;
-          if (res.more) {
-            toast({ title: "Copying the list…", description: "A long list takes a moment." });
-            added += await fillCopies(orgId);
-          }
+          // The list opens with its first batch; the rest follow behind it,
+          // so a new account lands in the list rather than in an empty one.
           // The copy switches ratings on, and deadlines when the list has them.
           await Promise.all([useAppStore.getState().loadFromSupabase(), useOrgSettingsStore.getState().loadSettings(orgId)]);
           openWhenLoaded(res.backlogId, res.treeId);
+          opened();
+          if (res.more) {
+            toast({ title: "Copying the list…", description: `The first ${ads(added)} are here; the rest follow in a moment.` });
+            const rest = await fillCopies(orgId);
+            added += rest;
+            if (rest > 0) await useAppStore.getState().loadFromSupabase();
+          }
           toast({
             title: res.existing ? "You already have this list" : "The list is in your account",
             description: res.existing
@@ -54,6 +61,7 @@ export function usePublishedListCopies(orgId: string | null, loaded: boolean): v
           });
         })
         .catch((e: Error) => {
+          opened();
           toast(
             e.message === ALREADY_HERE
               ? { title: ALREADY_HERE, description: "Its ads are here already: there is nothing to copy." }

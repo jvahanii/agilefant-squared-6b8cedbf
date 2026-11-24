@@ -35,6 +35,7 @@ import { firstList } from "./listPanel/firstList";
 import { useOrgIsEmpty } from "./listPanel/useOrgIsEmpty";
 import { applyStart, starterShape, type StartKind } from "./listPanel/startPresets";
 import { countNodes, takeTriedList } from "@/lib/tryList";
+import { hasListToCopy, useListCopyStore } from "@/lib/listCopy";
 import { toast } from "@/hooks/use-toast";
 import { ListHeader, ResultsHeader } from "./listPanel/ListHeader";
 import { FilterResultsList, SearchResultsList } from "./listPanel/SearchResults";
@@ -190,7 +191,12 @@ export function WorkItemTreePanel() {
   // Asked while the starter lists are untouched: under the first-item box, or,
   // once there are items (a list brought from the try-out arrives before the
   // box is ever seen), in the getting-started panel.
-  const starter = canManageOrg && activeOrgId ? starterShape(backlogTrees, backlogs) : null;
+  // Signed up to copy a public list: the copy is being made, and the
+  // account opens in it (hooks/usePublishedListCopies.ts), not in the
+  // first-item box with its questions.
+  const copyingList = useListCopyStore((s) => s.copying);
+  const awaitingCopy = orgIsEmpty && (copyingList || hasListToCopy());
+  const starter = canManageOrg && activeOrgId && !awaitingCopy ? starterShape(backlogTrees, backlogs) : null;
   const startProp =
     starter && activeOrgId
       ? { kind: starter.kind, onChoose: (kind: StartKind) => applyStart(kind, starter, activeOrgId) }
@@ -200,7 +206,14 @@ export function WorkItemTreePanel() {
       ? { name: activeMembership.organization_name, onRename: (name: string) => renameOrganization(activeMembership.organization_id, name) }
       : undefined;
 
-  const firstItemPrompt = firstItemPlace ? (
+  const firstItemPrompt = awaitingCopy ? (
+    <div role="status" className="flex-1 flex items-start justify-center px-4 py-6 md:py-16">
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <div aria-hidden className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        Copying the list into your account…
+      </div>
+    </div>
+  ) : firstItemPlace ? (
     <FirstItemPrompt
       listName={backlogs[firstItemPlace.backlogId]?.name ?? "this list"}
       treeName={backlogTrees[firstItemPlace.treeId]?.name}

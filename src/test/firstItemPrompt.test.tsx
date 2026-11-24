@@ -60,6 +60,7 @@ import type { WorkItem } from "@/types/models";
 import { saveTryList, TRY_LIST_KEY, type TryItem } from "@/lib/tryList";
 import { useOrgSettingsStore } from "@/store/orgSettingsStore";
 import { starterShape } from "@/components/listPanel/startPresets";
+import { rememberListToCopy, useListCopyStore } from "@/lib/listCopy";
 
 const ORG = "org";
 const starter = scopeMockDataToOrganization(ORG, structuredClone(starterContent));
@@ -450,6 +451,31 @@ describe("a list made on /try before signing up", () => {
     renderPanel();
     expect(useAppStore.getState().workItems).toEqual({});
     expect(screen.getByRole("heading", { name: "Add your first item" })).toBeTruthy();
+  });
+});
+
+describe("signing up to copy a public list", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useListCopyStore.setState({ copying: false });
+    seed({ changeLog: [] });
+  });
+
+  it("waits for the copy instead of asking for a first item or who it is for", () => {
+    rememberListToCopy("test-token-000000000000000000000");
+    renderPanel();
+    expect(screen.getByRole("status").textContent).toMatch(/Copying the list into your account/);
+    expect(screen.queryByRole("heading", { name: "Add your first item" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Who is it for?" })).toBeNull();
+  });
+
+  it("keeps waiting once the request is taken, and asks as usual if the copy came to nothing", () => {
+    useListCopyStore.setState({ copying: true });
+    renderPanel();
+    expect(screen.queryByRole("heading", { name: "Add your first item" })).toBeNull();
+    act(() => useListCopyStore.setState({ copying: false }));
+    expect(screen.getByRole("heading", { name: "Add your first item" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Who is it for?" })).toBeTruthy();
   });
 });
 

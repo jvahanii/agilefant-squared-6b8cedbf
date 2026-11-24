@@ -1,3 +1,4 @@
+import { create } from "zustand";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -39,11 +40,10 @@ export function rememberListToCopy(token: string, now = new Date()): void {
   }
 }
 
-/** The link to copy, taken out of storage so it is copied once. */
-export function takeListToCopy(now = new Date()): string | null {
+function readListToCopy(remove: boolean, now: Date): string | null {
   try {
     const raw = localStorage.getItem(PENDING_COPY_KEY);
-    localStorage.removeItem(PENDING_COPY_KEY);
+    if (remove) localStorage.removeItem(PENDING_COPY_KEY);
     if (!raw) return null;
     const { token, savedAt } = JSON.parse(raw) as { token?: unknown; savedAt?: unknown };
     const age = now.getTime() - new Date(String(savedAt)).getTime();
@@ -53,6 +53,23 @@ export function takeListToCopy(now = new Date()): string | null {
     return null;
   }
 }
+
+/** The link to copy, taken out of storage so it is copied once. */
+export function takeListToCopy(now = new Date()): string | null {
+  return readListToCopy(true, now);
+}
+
+/** Whether a copy is waiting to be made, leaving the request in storage. */
+export function hasListToCopy(now = new Date()): boolean {
+  return readListToCopy(false, now) !== null;
+}
+
+/**
+ * True from taking the request until the copied list is open. A new account
+ * would otherwise meet "Add your first item" and "Who is it for?" while its
+ * copy is being made (2026-11-24): it came for the list, so it waits for that.
+ */
+export const useListCopyStore = create<{ copying: boolean }>(() => ({ copying: false }));
 
 export async function copyPublishedList(token: string, orgId: string): Promise<CopyResult> {
   const { data, error } = await supabase.rpc("copy_published_list" as never, { _token: token, _organization_id: orgId } as never);
