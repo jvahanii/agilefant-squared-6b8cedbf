@@ -23,6 +23,14 @@ export function greetingName(fullName: string | null): string | null {
   return first;
 }
 
+/**
+ * Asked of everyone, answered by replying (2026-11-24). It used to open when
+ * the getting-started panel was closed, which reached those who had learnt
+ * the basics; this reaches those who never came back as well.
+ */
+export const QUESTION =
+  "One question: what were you hoping Agilefant would do? Just reply to this email; it goes to the people who make Agilefant.";
+
 const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -62,6 +70,8 @@ export function buildReminder({ fullName, itemsAdded, appUrl, unsubscribeUrl }: 
     ...(tips.length ? [...tips.map((t) => `- ${t}`), ""] : []),
     `${button}: ${appUrl}`,
     "",
+    QUESTION,
+    "",
     "Agilefant",
     "",
     "--",
@@ -77,6 +87,7 @@ ${p(hello)}
 ${paragraphs.map(p).join("\n")}
 ${tips.length ? `<ul style="margin:0 0 16px;padding-left:20px">${tips.map((t) => `<li style="margin:0 0 6px">${escapeHtml(t)}</li>`).join("")}</ul>` : ""}
 <p style="margin:8px 0 24px"><a href="${escapeHtml(appUrl)}" style="display:inline-block;background:#256abf;color:#ffffff;text-decoration:none;font-weight:600;padding:10px 18px;border-radius:6px">${escapeHtml(button)}</a></p>
+${p(QUESTION)}
 <p style="margin:0 0 4px">Agilefant</p>
 </div>
 <p style="max-width:520px;margin:16px auto 0;font-size:12px;color:#545a63;text-align:center">${escapeHtml(footer)} <a href="${escapeHtml(unsubscribeUrl)}" style="color:#545a63">Unsubscribe</a></p>

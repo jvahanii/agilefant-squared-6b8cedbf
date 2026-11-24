@@ -58,6 +58,8 @@ Deno.serve(async (req) => {
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (!resendKey) return json({ sent: 0, skipped: "RESEND_API_KEY is not set" });
   const from = Deno.env.get("ONBOARDING_FROM") || "Agilefant <hello@agilefant.org>";
+  // Where answers to the email's question go (QUESTION in _shared/onboardingEmail.ts).
+  const replyTo = Deno.env.get("ONBOARDING_REPLY_TO") || "jvahanii@gmail.com";
   const functionUrl = `${supabaseUrl}/functions/v1/onboarding-reminder`;
 
   const { data: due, error } = await admin.rpc("claim_onboarding_reminders", { _limit: BATCH });
@@ -81,6 +83,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from,
           to: [person.email],
+          reply_to: replyTo,
           subject: email.subject,
           html: email.html,
           text: email.text,

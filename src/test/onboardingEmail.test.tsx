@@ -23,6 +23,19 @@ import Unsubscribe from "@/pages/Unsubscribe";
 const base = { appUrl: "https://agilefant.org", unsubscribeUrl: "https://agilefant.org/unsubscribe?u=1&s=2" };
 const USER = "8b7ae8ae-5d07-4da0-b26a-13661b1f7392";
 
+describe("the reminder's question", () => {
+  it("is asked of everyone, in both versions of the email, and answered by replying", () => {
+    for (const itemsAdded of [0, 3]) {
+      const r = buildReminder({ ...base, fullName: "Anna", itemsAdded });
+      expect(r.text).toContain("what were you hoping Agilefant would do? Just reply to this email");
+      expect(r.html).toContain("what were you hoping Agilefant would do? Just reply to this email");
+    }
+    const sender = readFileSync(join(process.cwd(), "supabase/functions/onboarding-reminder/index.ts"), "utf8");
+    expect(sender).toMatch(/reply_to: replyTo/);
+    expect(sender).toMatch(/ONBOARDING_REPLY_TO/);
+  });
+});
+
 describe("the reminder", () => {
   it("asks someone with no items for a first one", () => {
     const r = buildReminder({ ...base, fullName: "Anna Virtanen", itemsAdded: 0 });
