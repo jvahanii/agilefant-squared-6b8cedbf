@@ -6,7 +6,6 @@ import { OrgNameLine } from "./OrgNameLine";
 import { StartChoice } from "./StartChoice";
 import type { StartKind } from "./startPresets";
 import { useInstallWay } from "@/lib/installPrompt";
-import { Button } from "@/components/ui/button";
 
 const TEXT: Record<StepKey, { title: string; how: string }> = {
   more: {
