@@ -13,10 +13,6 @@ export default {
       },
     },
     extend: {
-      fontFamily: {
-        // Headings on the public pages; the app itself stays in Inter.
-        display: ['"Source Serif 4"', "Georgia", "serif"],
-      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

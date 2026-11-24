@@ -12,7 +12,7 @@ import { ChevronDown } from "lucide-react";
  * settings, not written ahead of them — so keep the two in step when either
  * changes. The keys shown are real ones from `src/lib/shortcuts.ts`.
  *
- * The look is deliberately plain: one accent colour, a serif for headings,
+ * The look is deliberately plain: one accent colour, Inter throughout,
  * rules instead of cards, and no icons standing in for content. The first
  * version had a gradient glow, a two-tone headline, a dozen identical icon
  * cards and a crimson banner, and read as generated.
@@ -293,7 +293,7 @@ function ProductPicture() {
 function SectionHead({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="grid gap-4 md:grid-cols-12">
-      <h2 className="font-display text-3xl font-medium leading-tight tracking-tight sm:text-4xl md:col-span-5">{title}</h2>
+      <h2 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl md:col-span-5">{title}</h2>
       {children && <div className="max-w-xl text-muted-foreground md:col-span-6 md:col-start-7 md:pt-2">{children}</div>}
     </div>
   );
@@ -331,7 +331,7 @@ export default function Landing() {
 
       <main>
         <section className="mx-auto max-w-6xl px-4 pb-20 pt-14 sm:px-6 sm:pt-24">
-          <h1 className="max-w-4xl text-balance font-display text-5xl font-medium leading-[1.02] tracking-tight sm:text-7xl">
+          <h1 className="max-w-4xl text-balance text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
             Every list you have, in one app.
           </h1>
           <div className="mt-8 grid gap-8 lg:grid-cols-12 lg:items-end">
@@ -372,7 +372,7 @@ export default function Landing() {
                 key={who}
                 className={`px-4 py-10 sm:px-6 ${i > 0 ? "border-t md:border-l md:border-t-0" : ""}`}
               >
-                <h2 className="font-display text-2xl font-medium tracking-tight">{who}</h2>
+                <h2 className="text-xl font-semibold tracking-tight">{who}</h2>
                 <p className="mt-2 text-muted-foreground">{body}</p>
               </div>
             ))}
@@ -390,7 +390,7 @@ export default function Landing() {
               {FEATURE_GROUPS.map(({ name, lead, features }) => (
                 <div key={name} className="grid gap-6 border-t py-10 md:grid-cols-12">
                   <div className="md:col-span-4">
-                    <h3 className="font-display text-xl font-medium">{name}</h3>
+                    <h3 className="text-lg font-semibold">{name}</h3>
                     <p className="mt-1 text-sm text-muted-foreground">{lead}</p>
                   </div>
                   <dl className="grid gap-x-8 gap-y-6 sm:grid-cols-3 md:col-span-8">
@@ -417,7 +417,7 @@ export default function Landing() {
         <section className="bg-foreground text-background">
           <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
             <div className="grid gap-4 md:grid-cols-12">
-              <h2 className="font-display text-3xl font-medium leading-tight tracking-tight sm:text-4xl md:col-span-5">
+              <h2 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl md:col-span-5">
                 Work comes in from where it starts.
               </h2>
               <p className="max-w-xl text-background/70 md:col-span-6 md:col-start-7 md:pt-2">
@@ -427,7 +427,7 @@ export default function Landing() {
             <dl className="mt-14">
               {INTEGRATIONS.map(({ title, body }) => (
                 <div key={title} className="grid gap-2 border-t border-background/15 py-6 md:grid-cols-12">
-                  <dt className="font-display text-2xl font-medium md:col-span-4">{title}</dt>
+                  <dt className="text-xl font-semibold md:col-span-4">{title}</dt>
                   <dd className="max-w-2xl leading-relaxed text-background/75 md:col-span-8">{body}</dd>
                 </div>
               ))}
@@ -448,7 +448,7 @@ export default function Landing() {
                   className={`flex flex-col py-8 md:px-8 ${i === 0 ? "md:pl-0" : "border-t md:border-l md:border-t-0 md:pr-0"}`}
                 >
                   <div className="flex items-baseline justify-between gap-4">
-                    <h3 className="font-display text-3xl font-medium">{plan.name}</h3>
+                    <h3 className="text-2xl font-bold">{plan.name}</h3>
                     <p className="text-sm text-muted-foreground">{plan.tagline}</p>
                   </div>
                   <p className="mt-2 text-muted-foreground">{plan.body}</p>
@@ -486,7 +486,7 @@ export default function Landing() {
         <section className="border-t">
           <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-20 sm:px-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="font-display text-4xl font-medium tracking-tight sm:text-5xl">Plant your first tree.</h2>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Plant your first tree.</h2>
               <p className="mt-3 max-w-lg text-muted-foreground">
                 Sign up with Google or an email address and you are in your own organization in under a minute.
               </p>
