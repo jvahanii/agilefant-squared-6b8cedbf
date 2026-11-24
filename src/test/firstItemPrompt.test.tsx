@@ -276,32 +276,13 @@ describe("the getting-started steps", () => {
     expect(screen.getByText(/press Tab/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Close getting started" }));
-    // Closing asks one question first; Skip closes without an answer.
-    expect(screen.getByRole("textbox", { name: "Before you go: what were you hoping Agilefant would do?" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    // Closing closes: no question first.
+    expect(screen.queryByRole("textbox", { name: /what were you hoping/ })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Getting started" })).toBeNull();
     unmount();
     renderPanel();
     expect(screen.getByText("1 item")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Getting started" })).toBeNull();
-  });
-
-  it("send the answer to the closing question, then close", async () => {
-    const { supabase } = await import("@/integrations/supabase/client");
-    const rpcSpy = vi.spyOn(supabase, "rpc");
-    const ITEM = `${ORG}::wi-1`;
-    seed({ workItems: { [ITEM]: { id: ITEM, title: "First", parentId: null, childrenIds: [], status: "not_started", ranks: { [NOW]: 0 }, backlogAssignments: { [TREE]: NOW }, organizationId: ORG, createdOn: toIsoDate(new Date()) } as WorkItem }, selectedTreeId: TREE, selectedBacklogIds: [NOW] });
-    renderPanel();
-    fireEvent.click(screen.getByRole("button", { name: "Close getting started" }));
-    const box = screen.getByRole("textbox", { name: "Before you go: what were you hoping Agilefant would do?" });
-    expect((screen.getByRole("button", { name: "Send" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(box, { target: { value: "  A shared shopping list  " } });
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Send" }));
-    });
-    expect(rpcSpy).toHaveBeenCalledWith("send_onboarding_feedback", { _organization_id: ORG, _answer: "  A shared shopping list  " });
-    expect(screen.queryByRole("heading", { name: "Getting started" })).toBeNull();
-    rpcSpy.mockRestore();
   });
 
   it("say when the basics are done", () => {

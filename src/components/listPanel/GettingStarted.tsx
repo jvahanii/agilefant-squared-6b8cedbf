@@ -6,10 +6,7 @@ import { OrgNameLine } from "./OrgNameLine";
 import { StartChoice } from "./StartChoice";
 import type { StartKind } from "./startPresets";
 import { useInstallWay } from "@/lib/installPrompt";
-import { sendOnboardingFeedback } from "@/lib/invites";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
 
 const TEXT: Record<StepKey, { title: string; how: string }> = {
   more: {
@@ -54,67 +51,15 @@ export function GettingStarted({
   // Worked out at every change to any item, so not at all once closed.
   const steps = useMemo(() => (closed ? null : gettingStartedSteps(workItems)), [workItems, closed]);
   const install = useInstallWay();
-  // Closing asks one question first: with about three sign-ups a week the
-  // counts move slowly, and a sentence says more (2026-11-16).
-  const [asking, setAsking] = useState(false);
-  const [answer, setAnswer] = useState("");
-  const [sending, setSending] = useState(false);
   if (!steps || closed) return null;
 
+  // Closing used to ask "what were you hoping Agilefant would do?" first
+  // (2026-11-16). It met the people who had learnt the basics, not those
+  // who left, and stood in the way of closing (2026-11-24): closing closes.
   const close = () => {
     closeSteps(orgId);
     setClosed(true);
   };
-  const send = async () => {
-    setSending(true);
-    try {
-      await sendOnboardingFeedback(orgId, answer);
-      toast({ title: "Thank you!" });
-    } catch {
-      // The answer is lost, not the close: nobody should be held here by an error.
-    }
-    close();
-  };
-
-  if (asking) {
-    return (
-      <section
-        aria-labelledby="getting-started-question"
-        className="shrink-0 border-t bg-muted/40 px-3 py-2.5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <form
-          className="space-y-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void send();
-          }}
-        >
-          <label id="getting-started-question" htmlFor="getting-started-answer" className="block text-sm font-semibold">
-            Before you go: what were you hoping Agilefant would do?
-          </label>
-          <Textarea
-            id="getting-started-answer"
-            rows={2}
-            maxLength={2000}
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            className="min-h-0 resize-none bg-background"
-            autoFocus
-          />
-          <div className="flex items-center gap-2">
-            <Button type="submit" size="sm" disabled={sending || !answer.trim()}>
-              Send
-            </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={close}>
-              Skip
-            </Button>
-            <span className="text-xs text-muted-foreground">It goes to the people who make Agilefant.</span>
-          </div>
-        </form>
-      </section>
-    );
-  }
 
   const doneCount = steps.filter((s) => s.done).length;
   const allDone = doneCount === steps.length;
@@ -136,7 +81,7 @@ export function GettingStarted({
           type="button"
           className="ml-auto -mr-1 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label="Close getting started"
-          onClick={() => setAsking(true)}
+          onClick={close}
         >
           <X className="w-4 h-4" />
         </button>
