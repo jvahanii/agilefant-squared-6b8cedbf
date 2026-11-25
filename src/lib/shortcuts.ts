@@ -216,34 +216,12 @@ function moveSelectedItems({ state }: ShortcutContext, direction: -1 | 1) {
   });
 }
 
-/** With no item selected, the selected list moves one step up (-1) or down (+1) among its siblings. */
-function moveSelectedList({ state }: ShortcutContext, direction: -1 | 1) {
-  const blId = state.selectedBacklogIds[0];
-  const bl = state.backlogs[blId];
-  if (!bl || !state.selectedTreeId) return;
-  const parentId = bl.parentId;
-  const siblingIds = parentId
-    ? (state.backlogs[parentId]?.childrenIds ?? [])
-    : (state.backlogTrees[state.selectedTreeId]?.rootBacklogIds ?? []);
-  const currentIdx = siblingIds.indexOf(blId);
-  const newIdx = currentIdx + direction;
-  if (direction === 1 && newIdx < siblingIds.length) {
-    // Move to one position after current → swap with the next sibling
-    state.reorderBacklogAmongSiblings(blId, newIdx + 1, parentId, state.selectedTreeId);
-  } else if (direction === -1 && newIdx >= 0) {
-    state.reorderBacklogAmongSiblings(blId, newIdx, parentId, state.selectedTreeId);
-  }
-}
-
-/** The selected item, or else list, moves one step: an item if one is selected, otherwise the list. */
+/** The selected items move one step up (-1) or down (+1). With none selected, O and U start a list's name instead (hooks/useListNameKeys). */
 function moveSelection(ctx: ShortcutContext, direction: -1 | 1) {
   const { e, state } = ctx;
   if (state.selectedWorkItemIds.length >= 1 && state.selectedTreeId && state.selectedBacklogIds.length > 0) {
     e.preventDefault();
     moveSelectedItems(ctx, direction);
-  } else if (state.selectedWorkItemIds.length === 0 && state.selectedBacklogIds.length > 0 && state.selectedTreeId) {
-    e.preventDefault();
-    moveSelectedList(ctx, direction);
   }
 }
 
@@ -414,7 +392,7 @@ export const SHORTCUTS: Shortcut[] = [
       {
         keys: ["A–Z"],
         description:
-          "With a list selected and no item, type part of a list's name to select it (O and U still move the list: start from a later letter)",
+          "With a list selected and no item, type part of a list's name to select it",
       },
     ],
   },
@@ -527,14 +505,14 @@ export const SHORTCUTS: Shortcut[] = [
   {
     id: "down",
     group: "Reordering",
-    rows: [{ keys: ["O"], description: "Move item — or, with none selected, the list — down one position" }],
+    rows: [{ keys: ["O"], description: "Move selected item(s) down one position" }],
     matches: (e) => plain(e) && key(e) === "o",
     run: (ctx) => moveSelection(ctx, 1),
   },
   {
     id: "up",
     group: "Reordering",
-    rows: [{ keys: ["U"], description: "Move item — or, with none selected, the list — up one position" }],
+    rows: [{ keys: ["U"], description: "Move selected item(s) up one position" }],
     matches: (e) => plain(e) && key(e) === "u",
     run: (ctx) => moveSelection(ctx, -1),
   },

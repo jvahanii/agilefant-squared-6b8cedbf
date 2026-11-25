@@ -132,17 +132,14 @@ describe("typing a list's name", () => {
     expect(selectedList()).toEqual(["ideas"]);
   });
 
-  it("leaves O and U to move the list, but takes them within a name", () => {
+  it("starts a name with O or U too, which then move no list", () => {
     setup();
-    press("o");
-    press("u");
-    expect(passedOn).toEqual(["o", "u"]);
-    expect(selectedList()).toEqual(["inbox"]);
+    type("op");
+    expect(selectedList()).toEqual(["ops"]);
     now += 2000;
-    passedOn = [];
-    type("roa");
+    type("u");
     expect(passedOn).toEqual([]);
-    expect(selectedList()).toEqual(["roadmap"]);
+    expect(useAppStore.getState().backlogTrees[T1].rootBacklogIds).toEqual(["inbox", "ops", "roadmap"]);
   });
 
   it("leaves Shift+L to the logged time, but takes capitals", () => {

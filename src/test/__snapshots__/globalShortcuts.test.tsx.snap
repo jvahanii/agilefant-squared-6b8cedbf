@@ -987,66 +987,6 @@ exports[`global shortcuts, key by key > item up 1`] = `
 }
 `;
 
-exports[`global shortcuts, key by key > list down 1`] = `
-{
-  "events": [],
-  "expandedItems": [],
-  "expandedLists": [],
-  "listOrder": [
-    "org-1::bl-2",
-    "org-1::bl-1",
-  ],
-  "order": [
-    "A",
-    "B",
-    "C",
-  ],
-  "prevented": true,
-  "selectedItems": [],
-  "selectedLists": [
-    "org-1::bl-1",
-  ],
-  "shortcutsOverlay": false,
-  "statuses": {
-    "A": "not_started",
-    "A1": "not_started",
-    "B": "not_started",
-    "C": "not_started",
-  },
-  "timesheet": false,
-}
-`;
-
-exports[`global shortcuts, key by key > list up 1`] = `
-{
-  "events": [],
-  "expandedItems": [],
-  "expandedLists": [],
-  "listOrder": [
-    "org-1::bl-2",
-    "org-1::bl-1",
-  ],
-  "order": [
-    "A",
-    "B",
-    "C",
-  ],
-  "prevented": true,
-  "selectedItems": [],
-  "selectedLists": [
-    "org-1::bl-2",
-  ],
-  "shortcutsOverlay": false,
-  "statuses": {
-    "A": "not_started",
-    "A1": "not_started",
-    "B": "not_started",
-    "C": "not_started",
-  },
-  "timesheet": false,
-}
-`;
-
 exports[`global shortcuts, key by key > log time, logging off 1`] = `
 {
   "events": [],

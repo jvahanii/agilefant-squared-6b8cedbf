@@ -186,8 +186,6 @@ const CASES: Array<[string, string[], string[] | undefined, Press]> = [
   ["status with nothing selected", [], undefined, { key: "d" }],
   ["item down", ["A"], undefined, { key: "o" }],
   ["item up", ["C"], undefined, { key: "u" }],
-  ["list down", [], [L1], { key: "o" }],
-  ["list up", [], [L2], { key: "u" }],
   ["assign teams", ["B"], undefined, { key: "a" }],
   ["hyperlinks with H", ["B"], undefined, { key: "h" }],
   ["log time, logging off", ["B"], undefined, { key: "l" }],
