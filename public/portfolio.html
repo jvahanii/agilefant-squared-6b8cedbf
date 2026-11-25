@@ -301,6 +301,26 @@ h2 { font-size: var(--step-2); font-weight: 700; letter-spacing: -0.015em; }
 .quote .tr { display: block; font-family: var(--mono); font-size: 0.68rem; margin-top: 0.15rem; }
 @media (max-width: 760px) { .ws-photos { grid-template-columns: minmax(0, 1fr); } }
 
+/* LeSS Meetup Helsinki: three event cards */
+.meetups { display: grid; gap: 1.5rem; }
+.mgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.mcard { display: grid; grid-template-rows: auto 1fr; border-radius: 16px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); }
+.mimg { display: block; line-height: 0; }
+.mimg:hover { background: none; }
+.mimg img { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 600 / 338; object-fit: cover; }
+.mbody { display: grid; gap: 0.45rem; align-content: start; padding: 1.1rem 1.25rem 1.25rem; }
+.mbody p { margin: 0; }
+.mmeta { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.mvol { font-weight: 500; color: var(--fant-ink); background: var(--fant); padding: 0.1rem 0.45rem; border-radius: 4px; }
+.mnext { color: var(--live); font-weight: 500; }
+.mcard h3 { font-size: 1.15rem; font-weight: 800; line-height: 1.2; letter-spacing: -0.01em; }
+.mcard h3 a { text-decoration: none; }
+.mcard h3 a:hover { text-decoration: underline; text-decoration-color: var(--fant); background: none; color: inherit; }
+.mwho { font-size: 0.9rem; line-height: 1.5; color: var(--muted); }
+.mwho b { color: var(--ink); font-weight: 600; }
+.mwhere { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+@media (max-width: 860px) { .mgrid { grid-template-columns: minmax(0, 1fr); } }
+
 .project.minor .story h3 { font-size: var(--step-1); }
 .project.minor .story h3 .sub { font-size: var(--step-0); }
 
@@ -371,6 +391,45 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
         <figure class="quote"><blockquote>It's wonderful that you help people learn AI hands-on and bring together people from different backgrounds. On your own it's really hard to keep your skills up if a job search drags on.</blockquote><figcaption><b>Anu Petäjä</b>, Commercial Leader <span class="tr">translated from Finnish</span></figcaption></figure>
         <figure class="quote"><blockquote>Learning up-to-date new skills at its best. The young people also made new friends and memories that will last. As a parent, a big thank you for making this experience possible!</blockquote><figcaption><b>Varpu Sneck-Lehtinen</b>, HR Business Partner, parent of a participant in the youth workshop <span class="tr">translated from Finnish</span></figcaption></figure>
         <figure class="quote"><blockquote>A top-class training, and a truly excellent experience to be part of. A warm recommendation: keep it going!</blockquote><figcaption><b>Suvi Keinänen</b>, Commercial Digital Business and Customer Experience Professional <span class="tr">translated from Finnish</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="less-title" id="less">
+    <div class="section-head">
+      <h2 id="less-title">LeSS Meetup Helsinki</h2>
+      <p class="eyebrow">I organise it</p>
+    </div>
+    <div class="meetups">
+      <p class="ws-lead">Evening talks on Large-Scale Scrum, from practitioners and from the framework's co-creator, with food, drinks and plenty of time for discussion. <a href="https://www.meetup.com/large-scale-scrum-less-meetup-helsinki/">Join the group on Meetup</a>.</p>
+      <div class="mgrid">
+        <article class="mcard">
+          <a class="mimg" href="https://www.meetup.com/large-scale-scrum-less-meetup-helsinki/events/316558930/"><img src="/portfolio-images/less-v1.jpg" alt="Bas Vodde speaking on stage in front of the LeSS logo" width="600" height="338" loading="lazy"></a>
+          <div class="mbody">
+            <p class="mmeta"><span class="mvol">Vol 1</span> 22 Sep 2026</p>
+            <h3><a href="https://www.meetup.com/large-scale-scrum-less-meetup-helsinki/events/316558930/">Secret measurement of healthy team dynamics</a></h3>
+            <p class="mwho"><b>Bas Vodde</b>, co-creator of LeSS, with a preview of his LeSS Conference Tokyo talk on team spill-over.</p>
+            <p class="mwhere">Hosted by Netlight · 21 signed up</p>
+          </div>
+        </article>
+        <article class="mcard">
+          <a class="mimg" href="https://www.meetup.com/large-scale-scrum-less-meetup-helsinki/events/316693104/"><img src="/portfolio-images/less-v2.jpg" alt="Event banner for Wolfgang Steffens' talk Beyond R&amp;D" width="600" height="338" loading="lazy"></a>
+          <div class="mbody">
+            <p class="mmeta"><span class="mvol">Vol 2</span> 10 Nov 2026</p>
+            <h3><a href="https://www.meetup.com/large-scale-scrum-less-meetup-helsinki/events/316693104/">Beyond R&amp;D: designing product teams for the entire customer journey</a></h3>
+            <p class="mwho"><b>Wolfgang Steffens</b>, with a LeSS case study of four teams that took on customer service and operations as well as development.</p>
+            <p class="mwhere">Helsinki · 22 signed up</p>
+          </div>
+        </article>
+        <article class="mcard">
+          <a class="mimg" href="https://www.meetup.com/large-scale-scrum-less-meetup-helsinki/events/317393944/"><img src="/portfolio-images/less-v3.jpg" alt="Event banner for Ari Tikka's talk, with a drawing of team dynamics" width="600" height="338" loading="lazy"></a>
+          <div class="mbody">
+            <p class="mmeta"><span class="mvol">Vol 3</span> 27 Jan 2027 <span class="mnext">Upcoming</span></p>
+            <h3><a href="https://www.meetup.com/large-scale-scrum-less-meetup-helsinki/events/317393944/">Trust is the shared resource of an AI-powered team</a></h3>
+            <p class="mwho"><b>Ari Tikka</b> on tacit knowledge, group dynamics and how teams build trust when everyone works with AI.</p>
+            <p class="mwhere">Helsinki · <a href="https://www.meetup.com/large-scale-scrum-less-meetup-helsinki/events/317393944/">RSVP on Meetup</a></p>
+          </div>
+        </article>
       </div>
     </div>
   </section>
