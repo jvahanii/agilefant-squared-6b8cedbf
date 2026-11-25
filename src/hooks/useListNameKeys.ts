@@ -2,10 +2,9 @@
  * With a list selected and no item, typing part of a list's name selects that
  * list — as a row's number, typed, selects the row (useRowNumberKeys).
  *
- * A name starts with any letter but Shift+L, which opens the logged time. (O
- * and U once moved the list when no item was selected; they start a name now,
- * and lists move by dragging.) Once a name has begun, every key that types
- * something belongs to it — digits and spaces too.
+ * A name starts with any letter but three with Shift: Shift+O and Shift+U move
+ * the list, and Shift+L opens the logged time. Once a name has begun, every
+ * key that types something belongs to it — capitals, digits and spaces too.
  *
  * At each key the best match is selected: a name that starts with what was
  * typed, then one with a word that does, then one that has it anywhere; among
@@ -109,7 +108,7 @@ function typesCharacter(e: KeyboardEvent): boolean {
 /** Can a name start with this key? A letter that is not a shortcut of its own here. */
 function startsName(e: KeyboardEvent): boolean {
   if (!/^\p{L}$/u.test(e.key)) return false;
-  return !(e.shiftKey && e.key.toLowerCase() === "l");
+  return !(e.shiftKey && ["l", "o", "u"].includes(e.key.toLowerCase()));
 }
 
 export function useListNameKeys() {

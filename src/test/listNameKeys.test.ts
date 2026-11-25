@@ -142,6 +142,14 @@ describe("typing a list's name", () => {
     expect(useAppStore.getState().backlogTrees[T1].rootBacklogIds).toEqual(["inbox", "ops", "roadmap"]);
   });
 
+  it("leaves Shift+O and Shift+U to move the list", () => {
+    setup();
+    press("O", { shiftKey: true });
+    press("U", { shiftKey: true });
+    expect(passedOn).toEqual(["O", "U"]);
+    expect(selectedList()).toEqual(["inbox"]);
+  });
+
   it("leaves Shift+L to the logged time, but takes capitals", () => {
     setup();
     press("L", { shiftKey: true });

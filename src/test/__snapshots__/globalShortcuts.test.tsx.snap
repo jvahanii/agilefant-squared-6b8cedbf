@@ -955,6 +955,38 @@ exports[`global shortcuts, key by key > item down 1`] = `
 }
 `;
 
+exports[`global shortcuts, key by key > item down with Shift+O too 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-1",
+    "org-1::bl-2",
+  ],
+  "order": [
+    "B",
+    "A",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [
+    "A",
+  ],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
 exports[`global shortcuts, key by key > item up 1`] = `
 {
   "events": [],
@@ -975,6 +1007,66 @@ exports[`global shortcuts, key by key > item up 1`] = `
   ],
   "selectedLists": [
     "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > list down with Shift+O 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-2",
+    "org-1::bl-1",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-1",
+  ],
+  "shortcutsOverlay": false,
+  "statuses": {
+    "A": "not_started",
+    "A1": "not_started",
+    "B": "not_started",
+    "C": "not_started",
+  },
+  "timesheet": false,
+}
+`;
+
+exports[`global shortcuts, key by key > list up with Shift+U 1`] = `
+{
+  "events": [],
+  "expandedItems": [],
+  "expandedLists": [],
+  "listOrder": [
+    "org-1::bl-2",
+    "org-1::bl-1",
+  ],
+  "order": [
+    "A",
+    "B",
+    "C",
+  ],
+  "prevented": true,
+  "selectedItems": [],
+  "selectedLists": [
+    "org-1::bl-2",
   ],
   "shortcutsOverlay": false,
   "statuses": {
