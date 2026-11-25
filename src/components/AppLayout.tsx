@@ -37,6 +37,7 @@ import { JobSearchRunButton } from "@/components/JobSearchRunButton";
 import { JiraSyncHeaderButton } from "@/components/JiraSyncHeaderButton";
 import { PatternTrainerHeaderButton } from "@/components/PatternTrainerHeaderButton";
 import { handleShortcut, shortcutRowsByGroup } from "@/lib/shortcuts";
+import { useListNameKeys } from "@/hooks/useListNameKeys";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
 import { ListScrambleDialogHost } from "@/components/ListScrambleDialogHost";
@@ -167,6 +168,9 @@ function AppLayoutInner({ banner, tryOut }: { banner?: ReactNode; tryOut: boolea
     foldedForEmptyOrg.current = true;
     setMobileBacklogsCollapsed(true);
   }, [isMobile, orgIsEmpty]);
+
+  // With a list selected and no item, part of a list's name, typed, selects it.
+  useListNameKeys();
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const activeDragRef = useRef(activeDrag);

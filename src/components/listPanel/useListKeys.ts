@@ -9,6 +9,7 @@ import { useAppStore } from "@/store/appStore";
 import { visibleWorkItemIdsRef } from "@/store/navigationRefs";
 import { toast } from "@/hooks/use-toast";
 import { overlayOpen } from "@/lib/overlayLock";
+import { typingListName } from "@/hooks/useListNameKeys";
 import { indentTargets, rowsForReparenting } from "@/lib/workItemRows";
 import { getEffectiveParentId } from "@/types/models";
 import { SELECTION_SHORTCUTS, rowIsDrawn } from "../workItemRow/rowShared";
@@ -234,6 +235,11 @@ export function useRowNumberKeys(
       if (e.key === "Shift" || e.key === "CapsLock" || e.key === "NumLock") return;
 
       const now = Date.now();
+      // Within a list's name being typed, a digit is part of the name.
+      if (typingListName(now)) {
+        endNumber();
+        return;
+      }
       const typing = now - typedAt < ROW_NUMBER_PAUSE_MS;
       const digit = /^[0-9]$/.test(e.key);
       const correcting = typing && e.key === "Backspace";

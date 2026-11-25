@@ -1723,7 +1723,7 @@ exports[`global shortcuts, key by key > status with nothing selected 1`] = `
     "B",
     "C",
   ],
-  "prevented": false,
+  "prevented": true,
   "selectedItems": [],
   "selectedLists": [
     "org-1::bl-1",

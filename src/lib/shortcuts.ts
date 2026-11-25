@@ -407,6 +407,18 @@ export const SHORTCUTS: Shortcut[] = [
     rows: [{ keys: ["0–9"], description: "Type a row's number to select it (Backspace corrects it while typing)" }],
   },
   {
+    // Handled by hooks/useListNameKeys.
+    id: "select-list-by-name",
+    group: "Navigation",
+    rows: [
+      {
+        keys: ["A–Z"],
+        description:
+          "With a list selected and no item, type part of a list's name to select it (O and U still move the list: start from a later letter)",
+      },
+    ],
+  },
+  {
     id: "expand",
     group: "Navigation",
     rows: [{ keys: ["→"], description: "Expand selected item or list branch" }],
