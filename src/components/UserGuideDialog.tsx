@@ -167,10 +167,17 @@ function buildSections(): Section[] {
               },
               {
                 action: "Select a list",
-                how: "Click anywhere on a list row to select it and load its work items in the right panel.",
+                how: "Click anywhere on a list row to select it and load its work items in the right panel. Or, from the keyboard, use ↑ ↓ to step through the lists.",
+              },
+              {
+                action: "Find a list by typing",
+                how: "With a list selected and no item, type any part of another list's name: the best match is selected as you type — a name that starts with it first, then one with a word that does, then one that has it anywhere. Lists in folded branches are found too, and their branch opens. Once a name has begun, every key you type is part of it, digits and spaces included; Backspace takes back a letter without deleting the list, and taking back the last one returns to the list you started from. A pause of a second and a half, Esc, a click or any other key ends the name. Shift+O, Shift+U and Shift+L do not start a name — they keep their shortcuts.",
               },
               { action: "Delete a node", how: "Select the node and press Delete / Backspace." },
-              { action: "Reorder nodes", how: "Drag and drop nodes within the tree to reorder them." },
+              {
+                action: "Reorder nodes",
+                how: "Drag and drop nodes within the tree to reorder them, or select a list (with no item selected) and press Shift+U to move it up or Shift+O to move it down among its siblings.",
+              },
               { action: "Expand / collapse", how: "Click the expand arrow or press → to open a branch." },
             ].map((row) => (
               <ActionRow key={row.action} action={row.action} how={row.how} />
@@ -203,7 +210,10 @@ function buildSections(): Section[] {
                 action: "New child item",
                 how: "Select a parent item and press Shift+Enter, or click the + icon on the item row.",
               },
-              { action: "Select an item", how: "Click anywhere on the item row to select it." },
+              {
+                action: "Select an item",
+                how: "Click anywhere on the item row to select it, or type the number the row shows: each digit selects at once, so 1 then 2 passes row 1 on the way to row 12. Backspace corrects the number while you type it. ↑ ↓ step to the next and previous item.",
+              },
               { action: "Rename an item", how: "Double-click the item title to edit it directly in-place. A scrambled name cannot be renamed until it is unscrambled." },
               {
                 action: "Scramble a name",
@@ -229,8 +239,8 @@ function buildSections(): Section[] {
                 action: "Multi-select",
                 how: "Shift+Click to select a range, or Ctrl+Click (Cmd+Click on Mac) to toggle individual items.",
               },
-              { action: "Set story points", how: "Click the story-points value on the item row. When an item has children its points badge shows completed/total (e.g. 3/8) — the total rolls up from child items automatically." },
-              { action: "Estimate a whole list", how: "Right-click a list in the tree and choose Set points… to give a release or a sprint an estimate before its work is broken into items. The list then counts as the larger of that estimate and what its contents add up to — in its own total, in its parents' roll-ups, and in its burnup, where the estimate becomes the target line and the contents a dashed scope line. Hover the list's points to see both numbers." },
+              { action: "Set story points", how: "Click the story-points value on the item row, or select item(s) and press + for one point more or − for one less (down to none) — on every selected item at once, as one undo step. When an item has children its points badge shows completed/total (e.g. 3/8) — the total rolls up from child items automatically. Offered where the organisation has points on and the tree has not turned them off." },
+              { action: "Estimate a whole list", how: "Right-click a list in the tree and choose Set points…, or select the list with no item selected and press + or −, to give a release or a sprint an estimate before its work is broken into items. The list then counts as the larger of that estimate and what its contents add up to — in its own total, in its parents' roll-ups, and in its burnup, where the estimate becomes the target line and the contents a dashed scope line. Hover the list's points to see both numbers." },
               { action: "Rate an item", how: "Click a star on the item row to rate it one to five; click the star it already ends on to make it unrated again. Rating several selected items at once sets them all. A list can then be sorted by Rating ★ best first, which puts the unrated last — or, where deadlines are on too, by Deadline, then rating ★: what is due first, and of the things due the same day the best rated first. Offered only when the organisation has ratings on." },
               {
                 action: "Paste items",
@@ -326,6 +336,14 @@ function buildSections(): Section[] {
             Agilefant² is designed to be controlled entirely from the keyboard. Shortcuts only fire when no text input
             is focused.
           </p>
+          <Tip>
+            What a key does depends on what is selected. With <strong>items</strong> selected, the letters are
+            their shortcuts — status, move, reparent and so on. With a <strong>list</strong> selected and no item,
+            letters type a list's name to find it (only <KbdKey>Shift</KbdKey>+<KbdKey>O</KbdKey>,{" "}
+            <KbdKey>Shift</KbdKey>+<KbdKey>U</KbdKey> and <KbdKey>Shift</KbdKey>+<KbdKey>L</KbdKey> keep their
+            shortcuts), and digits type a row's number to select that item. While a name is being typed every key
+            belongs to it; press <KbdKey>Esc</KbdKey> or pause briefly before using a shortcut.
+          </Tip>
           {/* From the shortcuts themselves (lib/shortcuts.ts), so the guide says what the keys do. */}
           {shortcutRowsByGroup().map(({ group, rows }) => (
             <div key={group} className="space-y-1">
