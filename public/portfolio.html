@@ -240,6 +240,23 @@ h2 { font-size: var(--step-2); font-weight: 700; letter-spacing: -0.015em; }
   .layer { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Writing & research */
+.writing { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+.wcard {
+  display: grid; gap: 0.7rem; align-content: start; padding: 1.75rem; border-radius: 18px;
+  background: var(--surface); border: 1px solid var(--line);
+}
+.wcard h3 { font-size: var(--step-2); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.wcard h3 a { text-decoration: none; }
+.wcard h3 a:hover { text-decoration: underline; text-decoration-color: var(--fant); background: none; color: inherit; }
+.wcard p { margin: 0; }
+.wsub { color: var(--muted); font-size: var(--step-1); line-height: 1.35; }
+.posts { list-style: none; margin: 0.25rem 0 0; padding: 0; display: grid; border-top: 1px solid var(--line); }
+.posts li { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.posts time { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.more { font-family: var(--mono); font-size: var(--step--1); justify-self: start; margin-top: 0.25rem; }
+@media (max-width: 760px) { .writing { grid-template-columns: minmax(0, 1fr); } .wcard { padding: 1.25rem; } }
+
 .project.minor .story h3 { font-size: var(--step-1); }
 .project.minor .story h3 .sub { font-size: var(--step-0); }
 
@@ -272,11 +289,13 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
     <div class="intro-text">
       <p class="eyebrow">Finland · Agilefant.org</p>
       <h1>Jarno Vähäniitty</h1>
-      <p class="lede">I build software for how people, teams and organizations plan and work, and I run CollabAI workshops, following Marko Taipale's book <a href="https://leanpub.com/collabai"><cite>CollabAI: AI Teamwork in Practice</cite></a>, where people who aren't developers build real apps together with AI. I also build tools I want for myself, like a calmer YouTube and an auto-editor for my skate footage.</p>
+      <p class="lede">I build software for how people, teams and organizations plan and work, and tools I want for myself, like a calmer YouTube and an auto-editor for my skate footage. I also run CollabAI workshops, where people who aren't developers build real apps together with AI. The workshops follow Marko Taipale's book <a href="https://leanpub.com/collabai"><cite>CollabAI: AI Teamwork in Practice</cite></a>.</p>
       <p class="callout"><b>Built by non-developers.</b> Apart from Agilefant², every app on this page was made by participants in my CollabAI workshops.</p>
       <ul class="contact">
         <li><a href="https://github.com/jvahanii">github.com/jvahanii</a></li>
         <li><a href="https://agilefant.org">agilefant.org</a></li>
+        <li><a href="https://dragilefant.com">dragilefant.com (blog)</a></li>
+        <li><a href="#writing">Dissertation</a></li>
       </ul>
     </div>
   </header>
@@ -543,6 +562,7 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
         </div>
         <div class="story">
           <h3>Agilefant <span class="sub">The scalable open-source tool for lean and agile project management.</span></h3>
+          <figure class="shot"><a href="https://sourceforge.net/projects/agilefant/"><img src="/portfolio-images/agilefant-classic.jpg" alt="The original Agilefant's story tree: an example product broken down into engine, wheels and fuel containers, each with story points" width="1464" height="865" loading="lazy" style="aspect-ratio: 1464 / 865"></a><figcaption>Story tree, from the SourceForge project page</figcaption></figure>
           <p>Where Agilefant² began. A web app built on years of research in real organisations, with a model that scales from personal to-do lists to multi-team development and long-term product and portfolio management.</p>
           <ul class="points">
             <li>Used by more than 10,000 people in thousands of organisations around the world.</li>
@@ -553,6 +573,35 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
       </li>
 
     </ol>
+  </section>
+
+  <section aria-labelledby="writing-title" id="writing">
+    <div class="section-head">
+      <h2 id="writing-title">Writing &amp; research</h2>
+      <p class="eyebrow">Where the ideas come from</p>
+    </div>
+    <div class="writing">
+      <article class="wcard">
+        <p class="eyebrow">Blog</p>
+        <h3><a href="https://dragilefant.com">Dr. Agilefant's Blog</a></h3>
+        <p class="wsub">Musings from the ivory tower and the trench.</p>
+        <ul class="posts">
+          <li><time datetime="2026-04-14">Apr 2026</time><a href="https://dragilefant.com/2026/04/14/agilefant-rides-again/">Agilefant rides again</a></li>
+          <li><time datetime="2024-11-13">Nov 2024</time><a href="https://dragilefant.com/2024/11/13/please-install-the-spotify-model-for-me/">Please install the Spotify model for me</a></li>
+          <li><time datetime="2023-12-17">Dec 2023</time><a href="https://dragilefant.com/2023/12/17/scaling-agile-safe-and-sound/">Scaling agile safe and sound</a></li>
+          <li><time datetime="2020-03-11">Mar 2020</time><a href="https://dragilefant.com/2020/03/11/safe-with-vanilla-jira-reloaded/">SAFe with Vanilla Jira Reloaded</a></li>
+        </ul>
+        <a class="more" href="https://dragilefant.com">Read the blog at dragilefant.com</a>
+      </article>
+      <article class="wcard">
+        <p class="eyebrow">Doctoral dissertation · 2012</p>
+        <h3><a href="https://aaltodoc.aalto.fi/server/api/core/bitstreams/86c90093-664a-492a-8e5d-911890ff86b0/content">Towards agile product and portfolio management</a></h3>
+        <p class="wsub">Aalto University School of Science</p>
+        <p>How small, growing software companies can tie long-term product and business planning to agile software development. The research behind Agilefant's model of nested backlogs, from a team's iteration up to the product portfolio.</p>
+        <ul class="stack"><li>Product backlog</li><li>Portfolio management</li><li>Scrum</li><li>Product management</li></ul>
+        <a class="more" href="https://aaltodoc.aalto.fi/server/api/core/bitstreams/86c90093-664a-492a-8e5d-911890ff86b0/content">Read the dissertation (PDF)</a>
+      </article>
+    </div>
   </section>
 
   <footer>

@@ -47,7 +47,8 @@ describe("Landing", () => {
         expect(href, href).toMatch(/^mailto:[^@\s]+@[^@\s.]+\.[^@\s]+$/);
         continue;
       }
-      expect(href, href).toMatch(/^\/(auth(\/sign-up)?|try|user-guide|terms)$/);
+      // /portfolio is a stand-alone page in public/, served as it is, not a route.
+      expect(href, href).toMatch(/^\/(auth(\/sign-up)?|try|user-guide|terms|portfolio)$/);
     }
   });
 
