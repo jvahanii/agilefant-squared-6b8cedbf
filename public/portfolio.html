@@ -206,6 +206,11 @@ h2 { font-size: var(--step-2); font-weight: 700; letter-spacing: -0.015em; }
 .modules dt::before { content: ""; width: 0.6rem; height: 0.6rem; background: var(--app, var(--fant)); border-radius: 50%; flex: none; }
 .modules dd { margin: 0; font-size: 0.9rem; line-height: 1.5; color: var(--muted); }
 .note { font-size: var(--step--1); color: var(--muted); }
+.upcoming {
+  justify-self: start; padding: 0.55rem 0.9rem; border-radius: 10px; font-size: 0.9rem;
+  background: var(--surface); border: 1px dashed color-mix(in srgb, var(--app, var(--fant)) 55%, var(--line));
+}
+.upcoming b { font-family: var(--display); color: var(--app, var(--ink)); }
 @media (max-width: 560px) {
   .modules { grid-template-columns: minmax(0, 1fr); }
   .modules > div:nth-child(even) { padding-left: 0; border-left: 0; }
@@ -403,6 +408,7 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
             <div><dt>Work &amp; vacations</dt><dd>A shared absence calendar with national holidays, vacation days earned and left, custom absence kinds, and a change history that can't be edited.</dd></div>
             <div><dt>Pulse</dt><dd>Free surveys and structured interviews run in rounds. Personal links follow each person's answers over time and compare every round.</dd></div>
           </dl>
+          <p class="upcoming"><b>Next:</b> <a href="#talentloom-iq">Talentloom IQ</a>, the reasoning test trainer, is being rebuilt into Talentloom in a CollabAI workshop, December 2026.</p>
           <p class="note">It started as a recruiting pipeline tracker. Each organisation's data is kept apart by row-level security in Postgres.</p>
         </div>
       </li>
@@ -448,6 +454,7 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
             <li>An optional time limit per task (15–90 s) or for the whole set (7 or 10 minutes).</li>
             <li>Statistics by puzzle type, kept in your browser.</li>
           </ul>
+          <p class="upcoming"><b>Next:</b> being rebuilt as part of <a href="#talentloom">Talentloom</a> in a CollabAI workshop, December 2026.</p>
         </div>
       </li>
 
