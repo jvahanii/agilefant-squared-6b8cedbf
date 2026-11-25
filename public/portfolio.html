@@ -26,13 +26,13 @@ body{margin:0} img{max-width:100%}
   --tint: 9%;               /* how much of an app's colour tints its panel */
   /* one colour per app, from its own branding where it has one */
   --c-agilefant: #d6336c;
-  --c-talentloom: #e0559b;
+  --c-talentloom: #0e9f8f;
   --c-piharadikaali: #3b8fe0;
   --c-tuubmix: #f08a24;
   --c-keywi: #6fb520;
   --c-yourtube: #8b5cf6;
   --c-jql: #5b7bb5;
-  --c-iq: #14a39a;
+  --c-iq: #5b5bd6;
   --display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
   --body: "IBM Plex Sans", "Segoe UI", Roboto, Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
@@ -240,22 +240,28 @@ h2 { font-size: var(--step-2); font-weight: 700; letter-spacing: -0.015em; }
   .layer { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* Writing & research */
-.writing { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
-.wcard {
-  display: grid; gap: 0.7rem; align-content: start; padding: 1.75rem; border-radius: 18px;
-  background: var(--surface); border: 1px solid var(--line);
+/* Writing & research: two wide panels, a lead column beside a list */
+.writing { display: grid; gap: 1.25rem; }
+.wpanel {
+  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 1.5rem 3rem; align-items: start;
+  padding: 2rem; border-radius: 18px; background: var(--surface); border: 1px solid var(--line);
 }
-.wcard h3 { font-size: var(--step-2); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
-.wcard h3 a { text-decoration: none; }
-.wcard h3 a:hover { text-decoration: underline; text-decoration-color: var(--fant); background: none; color: inherit; }
-.wcard p { margin: 0; }
+.wlead, .wlist { display: grid; gap: 0.7rem; align-content: start; min-width: 0; }
+.wpanel h3 { font-size: var(--step-2); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.wpanel h3 a { text-decoration: none; }
+.wpanel h3 a:hover { text-decoration: underline; text-decoration-color: var(--fant); background: none; color: inherit; }
+.wpanel p { margin: 0; }
 .wsub { color: var(--muted); font-size: var(--step-1); line-height: 1.35; }
-.posts { list-style: none; margin: 0.25rem 0 0; padding: 0; display: grid; border-top: 1px solid var(--line); }
-.posts li { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid var(--line); align-items: baseline; }
-.posts time { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.posts, .pubs { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--line); }
+.posts li { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.posts time, .pubs .yr { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pubs li { display: grid; grid-template-columns: 3rem minmax(0, 1fr); gap: 0.75rem; padding: 0.65rem 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.pubs li > div { display: grid; gap: 0.15rem; }
+.pubs a { line-height: 1.4; }
+.pubs .by { font-size: 0.82rem; color: var(--muted); line-height: 1.4; }
+.pubs .by b { color: var(--ink); font-weight: 600; }
 .more { font-family: var(--mono); font-size: var(--step--1); justify-self: start; margin-top: 0.25rem; }
-@media (max-width: 760px) { .writing { grid-template-columns: minmax(0, 1fr); } .wcard { padding: 1.25rem; } }
+@media (max-width: 860px) { .wpanel { grid-template-columns: minmax(0, 1fr); padding: 1.25rem; } }
 
 .project.minor .story h3 { font-size: var(--step-1); }
 .project.minor .story h3 .sub { font-size: var(--step-0); }
@@ -295,7 +301,7 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
         <li><a href="https://github.com/jvahanii">github.com/jvahanii</a></li>
         <li><a href="https://agilefant.org">agilefant.org</a></li>
         <li><a href="https://dragilefant.com">dragilefant.com (blog)</a></li>
-        <li><a href="#writing">Dissertation</a></li>
+        <li><a href="#research">Research</a></li>
       </ul>
     </div>
   </header>
@@ -581,32 +587,68 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
       <p class="eyebrow">Where the ideas come from</p>
     </div>
     <div class="writing">
-      <article class="wcard">
-        <p class="eyebrow">Blog</p>
-        <h3><a href="https://dragilefant.com">Dr. Agilefant's Blog</a></h3>
-        <p class="wsub">Musings from the ivory tower and the trench.</p>
-        <ul class="posts">
-          <li><time datetime="2026-04-14">Apr 2026</time><a href="https://dragilefant.com/2026/04/14/agilefant-rides-again/">Agilefant rides again</a></li>
-          <li><time datetime="2024-11-13">Nov 2024</time><a href="https://dragilefant.com/2024/11/13/please-install-the-spotify-model-for-me/">Please install the Spotify model for me</a></li>
-          <li><time datetime="2023-12-17">Dec 2023</time><a href="https://dragilefant.com/2023/12/17/scaling-agile-safe-and-sound/">Scaling agile safe and sound</a></li>
-          <li><time datetime="2020-03-11">Mar 2020</time><a href="https://dragilefant.com/2020/03/11/safe-with-vanilla-jira-reloaded/">SAFe with Vanilla Jira Reloaded</a></li>
-        </ul>
-        <a class="more" href="https://dragilefant.com">Read the blog at dragilefant.com</a>
+      <article class="wpanel" id="research">
+        <div class="wlead">
+          <p class="eyebrow">Doctoral dissertation · 2012</p>
+          <h3><a href="https://aaltodoc.aalto.fi/handle/123456789/6046">Towards agile product and portfolio management</a></h3>
+          <p class="wsub">Aalto University School of Science</p>
+          <p>How software companies can tie long-term product and business planning to agile software development. The research behind Agilefant's model of nested backlogs, from a team's iteration up to the product portfolio.</p>
+          <ul class="stack"><li>Product backlog</li><li>Portfolio management</li><li>Scrum</li><li>Product management</li></ul>
+          <a class="more" href="https://aaltodoc.aalto.fi/server/api/core/bitstreams/86c90093-664a-492a-8e5d-911890ff86b0/content">Read the dissertation (PDF)</a>
+        </div>
+        <div class="wlist">
+          <p class="eyebrow">Publications</p>
+          <ol class="pubs">
+            <li><span class="yr">2010</span><div><a href="https://doi.org/10.1147/jrd.2009.2038747">Small software organizations need explicit project portfolio management</a><span class="by"><b>Vähäniitty</b>, Rautiainen, Lassenius · <i>IBM Journal of Research and Development</i></span></div></li>
+            <li><span class="yr">2009</span><div><a href="https://doi.org/10.1007/s00766-009-0078-8">Linking business and requirements engineering: is solution planning a missing activity in software product companies?</a><span class="by">Lehtola, Kauppinen, <b>Vähäniitty</b>, Komssi · <i>Requirements Engineering</i></span></div></li>
+            <li><span class="yr">2009</span><div><a href="https://doi.org/10.1109/seaa.2009.29">Long-term planning of development efforts by roadmapping: a model and experiences from small software companies</a><span class="by"><b>Vähäniitty</b>, Lassenius, Rautiainen, Pekkanen · <i>Euromicro SEAA</i></span></div></li>
+            <li><span class="yr">2008</span><div><a href="https://doi.org/10.1145/1370720.1370730">Towards a conceptual framework and tool support for linking long-term product and business planning with agile software development</a><span class="by"><b>Vähäniitty</b>, Rautiainen · <i>ACM</i></span></div></li>
+            <li><span class="yr">2007</span><div><a href="https://doi.org/10.1109/re.2007.30">Strengthening the link between business decisions and RE: long-term product planning in software product companies</a><span class="by">Lehtola, Kauppinen, <b>Vähäniitty</b> · <i>IEEE Requirements Engineering Conference</i></span></div></li>
+            <li><span class="yr">2005</span><div><a href="https://doi.org/10.1109/hicss.2005.636">Towards an approach for managing the development portfolio in small product-oriented software companies</a><span class="by"><b>Vähäniitty</b>, Rautiainen · <i>HICSS</i></span></div></li>
+            <li><span class="yr">2005</span><div><a href="https://doi.org/10.1145/1082983.1083097">A tentative framework for connecting long-term business and product planning with iterative &amp; incremental software product development</a><span class="by"><b>Vähäniitty</b> · <i>ACM SIGSOFT Software Engineering Notes</i></span></div></li>
+            <li><span class="yr">2004</span><div><a href="https://doi.org/10.1049/ic:20040286">Product portfolio management in small software product businesses: a tentative research agenda</a><span class="by"><b>Vähäniitty</b> · <i>IEE</i></span></div></li>
+            <li><span class="yr">2004</span><div><a href="https://research.aalto.fi/fi/publications/publication(7bfc8f01-0c5e-4eb2-a305-2c6e61247d28).html">Pacing software product development: a framework and practical implementation guidelines</a><span class="by">Rautiainen, Lassenius, Itkonen, Mäntylä, Rusama, Vanhanen, <b>Vähäniitty</b></span></div></li>
+            <li><span class="yr">2002</span><div><a href="https://doi.org/10.1109/hicss.2002.994377">A tentative framework for managing software product development in small companies</a><span class="by">Rautiainen, Lassenius, <b>Vähäniitty</b>, Pyhäjärvi, Vanhanen · <i>HICSS</i></span></div></li>
+            <li><span class="yr">2002</span><div><a href="https://research.aalto.fi/en/publications/publication(9d4caf4c-a0e1-4f6d-8152-c8d8d613d286).html">An approach to product roadmapping in small software product businesses</a><span class="by"><b>Vähäniitty</b>, Lassenius, Rautiainen</span></div></li>
+          </ol>
+        </div>
       </article>
-      <article class="wcard">
-        <p class="eyebrow">Doctoral dissertation · 2012</p>
-        <h3><a href="https://aaltodoc.aalto.fi/server/api/core/bitstreams/86c90093-664a-492a-8e5d-911890ff86b0/content">Towards agile product and portfolio management</a></h3>
-        <p class="wsub">Aalto University School of Science</p>
-        <p>How software companies can tie long-term product and business planning to agile software development. The research behind Agilefant's model of nested backlogs, from a team's iteration up to the product portfolio.</p>
-        <ul class="stack"><li>Product backlog</li><li>Portfolio management</li><li>Scrum</li><li>Product management</li></ul>
-        <a class="more" href="https://aaltodoc.aalto.fi/server/api/core/bitstreams/86c90093-664a-492a-8e5d-911890ff86b0/content">Read the dissertation (PDF)</a>
+
+      <article class="wpanel" id="blog">
+        <div class="wlead">
+          <p class="eyebrow">Blog</p>
+          <h3><a href="https://dragilefant.com">Dr. Agilefant's Blog</a></h3>
+          <p class="wsub">Musings from the ivory tower and the trench.</p>
+          <a class="more" href="https://dragilefant.com">Read the blog at dragilefant.com</a>
+        </div>
+        <div class="wlist">
+          <p class="eyebrow">All 16 posts</p>
+          <ul class="posts">
+            <li><time datetime="2026-04-14">Apr 2026</time><a href="https://dragilefant.com/2026/04/14/agilefant-rides-again/">Agilefant rides again</a></li>
+            <li><time datetime="2024-11-13">Nov 2024</time><a href="https://dragilefant.com/2024/11/13/please-install-the-spotify-model-for-me/">Please install the Spotify model for me</a></li>
+            <li><time datetime="2023-12-17">Dec 2023</time><a href="https://dragilefant.com/2023/12/17/scaling-agile-safe-and-sound/">Scaling agile safe and sound</a></li>
+            <li><time datetime="2021-09-23">Sep 2021</time><a href="https://dragilefant.com/2021/09/23/a-cadence-based-workflow/">The cadence-based workflow</a></li>
+            <li><time datetime="2021-01-08">Jan 2021</time><a href="https://dragilefant.com/2021/01/08/for-the-head-of-the-head-of-devops/">For the Head of the Head of DevOps</a></li>
+            <li><time datetime="2021-01-07">Jan 2021</time><a href="https://dragilefant.com/2021/01/07/the-impossible-battle/">The Impossible Battle</a></li>
+            <li><time datetime="2020-03-11">Mar 2020</time><a href="https://dragilefant.com/2020/03/11/safe-with-vanilla-jira-reloaded/">SAFe with Vanilla Jira Reloaded</a></li>
+            <li><time datetime="2020-01-04">Jan 2020</time><a href="https://dragilefant.com/2020/01/04/yet-another-top-ten-lean-and-agile-presentations-on-youtube/">Yet another top ten lean and agile presentations on YouTube</a></li>
+            <li><time datetime="2019-04-09">Apr 2019</time><a href="https://dragilefant.com/2019/04/09/its-just-a-toolbox-essentials-and-accidents-in-scaling-agile/">“It’s just a toolbox”: essentials and accidents in scaling agile</a></li>
+            <li><time datetime="2019-03-28">Mar 2019</time><a href="https://dragilefant.com/2019/03/28/valeketteryys-kuokka-ja-jussi/">Valeketteryys, kuokka ja jussi</a></li>
+            <li><time datetime="2019-03-25">Mar 2019</time><a href="https://dragilefant.com/2019/03/25/mr-framework-tear-down-this-wall/">Mr. Framework, tear down this wall</a></li>
+            <li><time datetime="2018-09-11">Sep 2018</time><a href="https://dragilefant.com/2018/09/11/a-three-level-requirements-hierarchy-drives-batch-size-up/">A three-level requirements hierarchy drives batch size up</a></li>
+            <li><time datetime="2018-08-01">Aug 2018</time><a href="https://dragilefant.com/2018/08/01/a-kingdom-for-a-decent-tool-review/">A kingdom for a decent tool review</a></li>
+            <li><time datetime="2018-03-21">Mar 2018</time><a href="https://dragilefant.com/2018/03/21/culture-follows-structure/">Culture follows structure</a></li>
+            <li><time datetime="2018-02-16">Feb 2018</time><a href="https://dragilefant.com/2018/02/16/the-simplest-way-to-run-safe-with-jira/">The simplest way to run SAFe with JIRA</a></li>
+            <li><time datetime="2018-01-26">Jan 2018</time><a href="https://dragilefant.com/2018/01/26/top-ten-lean-and-agile-presentations-on-youtube/">Top ten lean and agile presentations on YouTube</a></li>
+          </ul>
+        </div>
       </article>
     </div>
   </section>
 
   <footer>
     <span>Jarno Vähäniitty · Finland</span>
-    <span>Project data from GitHub, November 2026</span>
+    <span>Data from GitHub, OpenAlex and dragilefant.com, November 2026</span>
   </footer>
 
 </div>
