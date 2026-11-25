@@ -261,6 +261,11 @@ h2 { font-size: var(--step-2); font-weight: 700; letter-spacing: -0.015em; }
 .pubs .by { font-size: 0.82rem; color: var(--muted); line-height: 1.4; }
 .pubs .by b { color: var(--ink); font-weight: 600; }
 .more { font-family: var(--mono); font-size: var(--step--1); justify-self: start; margin-top: 0.25rem; }
+.rproj { display: grid; gap: 0.6rem; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--line); }
+.rprojects { margin: 0; display: grid; gap: 0.7rem; }
+.rprojects > div { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: 0.75rem; align-items: baseline; }
+.rprojects dt { font-family: var(--display); font-weight: 800; letter-spacing: 0.02em; }
+.rprojects dd { margin: 0; font-size: 0.9rem; line-height: 1.5; color: var(--muted); }
 @media (max-width: 860px) { .wpanel { grid-template-columns: minmax(0, 1fr); padding: 1.25rem; } }
 
 .project.minor .story h3 { font-size: var(--step-1); }
@@ -569,7 +574,7 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
         <div class="story">
           <h3>Agilefant <span class="sub">The scalable open-source tool for lean and agile project management.</span></h3>
           <figure class="shot"><a href="https://sourceforge.net/projects/agilefant/"><img src="/portfolio-images/agilefant-classic.jpg" alt="The original Agilefant's story tree: an example product broken down into engine, wheels and fuel containers, each with story points" width="1464" height="865" loading="lazy" style="aspect-ratio: 1464 / 865"></a><figcaption>Story tree, from the SourceForge project page</figcaption></figure>
-          <p>Where Agilefant² began. A web app built on years of research in real organisations, with a model that scales from personal to-do lists to multi-team development and long-term product and portfolio management.</p>
+          <p>Where Agilefant² began. Built in the <a href="#research">ATMAN research project</a> at Helsinki University of Technology and first released in May 2007, on years of research in real organisations, with a model that scales from personal to-do lists to multi-team development and long-term product and portfolio management.</p>
           <ul class="points">
             <li>Used by more than 10,000 people in thousands of organisations around the world.</li>
             <li>Open source under the MIT licence: first committed in October 2006, published on SourceForge in 2008, and forked over 150 times on GitHub.</li>
@@ -595,6 +600,15 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
           <p>How software companies can tie long-term product and business planning to agile software development. The research behind Agilefant's model of nested backlogs, from a team's iteration up to the product portfolio.</p>
           <ul class="stack"><li>Product backlog</li><li>Portfolio management</li><li>Scrum</li><li>Product management</li></ul>
           <a class="more" href="https://aaltodoc.aalto.fi/server/api/core/bitstreams/86c90093-664a-492a-8e5d-911890ff86b0/content">Read the dissertation (PDF)</a>
+          <div class="rproj">
+            <p class="eyebrow">Research projects · SoberIT, Helsinki University of Technology</p>
+            <dl class="rprojects">
+              <div><dt>SEMS</dt><dd>Industry research project with participating software companies, one of the sources of the dissertation's case studies.</dd></div>
+              <div><dt>SHAPE</dt><dd>Industry research project with participating software companies, also a source of the dissertation's case studies.</dd></div>
+              <div><dt>ATMAN</dt><dd>Approach and Tool support for development portfolio MANagement. About €1 million and 16,000 hours of work over three years, with seven industrial and two research partners. Agilefant was designed and built here and first released in May 2007.</dd></div>
+            </dl>
+            <p class="note">Funded by Tekes (75–80%) and the participating companies (20–25%). The 14 case organisations in the dissertation took part in these projects.</p>
+          </div>
         </div>
         <div class="wlist">
           <p class="eyebrow">Publications</p>
