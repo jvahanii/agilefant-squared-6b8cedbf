@@ -615,7 +615,7 @@ export const SHORTCUTS: Shortcut[] = [
   {
     id: "points-down",
     group: "Other",
-    rows: [{ keys: ["-"], description: "One point less, down to none: the selected items, or else the list" }],
+    rows: [{ keys: ["−"], description: "One point less, down to none: the selected items, or else the list" }],
     matches: (e) => plain(e) && !e.altKey && e.key === "-",
     run: (ctx) => changePoints(ctx, -1),
   },
