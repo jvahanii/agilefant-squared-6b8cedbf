@@ -36,7 +36,7 @@ import { RerankGuardHost } from "@/components/RerankGuardHost";
 import { JobSearchRunButton } from "@/components/JobSearchRunButton";
 import { JiraSyncHeaderButton } from "@/components/JiraSyncHeaderButton";
 import { PatternTrainerHeaderButton } from "@/components/PatternTrainerHeaderButton";
-import { handleShortcut, shortcutRowsByGroup } from "@/lib/shortcuts";
+import { handleShortcut, isSymbolKey, shortcutRowsByGroup } from "@/lib/shortcuts";
 import { useListNameKeys } from "@/hooks/useListNameKeys";
 import { PersistDebugOverlay } from "@/components/PersistDebugOverlay";
 import { useBurnupDialogStore } from "@/store/burnupDialogStore";
@@ -922,7 +922,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
                     {s.keys.map((key, j) => (
                       <kbd
                         key={j}
-                        className="px-1.5 py-1 rounded border bg-muted text-[10px] font-mono shadow-sm min-w-[28px] text-center"
+                        className={`px-1.5 py-1 rounded border bg-muted font-mono shadow-sm min-w-[28px] text-center ${isSymbolKey(key) ? "text-sm leading-[15px]" : "text-[10px]"}`}
                       >
                         {key}
                       </kbd>

@@ -781,6 +781,15 @@ export function handleShortcut(e: KeyboardEvent, context: Omit<ShortcutContext, 
   }
 }
 
+/**
+ * A key written as one symbol — +, −, ?, /, an arrow. At the 10 px the keys
+ * are drawn in, such a glyph is a few pixels wide (− all but vanished), so the
+ * guide and the overlay draw these larger.
+ */
+export function isSymbolKey(k: string): boolean {
+  return [...k].length === 1 && !/[\p{L}\p{N}]/u.test(k);
+}
+
 /** The shortcuts as the guide and the overlay list them, section by section. */
 export function shortcutRowsByGroup(): Array<{ group: ShortcutGroup; rows: Array<{ keys: string[]; description: string }> }> {
   return SHORTCUT_GROUPS.map((group) => ({

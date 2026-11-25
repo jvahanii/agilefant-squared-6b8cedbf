@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { shortcutRowsByGroup } from "@/lib/shortcuts";
+import { isSymbolKey, shortcutRowsByGroup } from "@/lib/shortcuts";
 import {
   BookOpen,
   Layers,
@@ -58,7 +58,11 @@ const StatusBadge = ({ color, label }: { color: string; label: string }) => (
 );
 
 const KbdKey = ({ children }: { children: React.ReactNode }) => (
-  <kbd className="px-1.5 py-0.5 rounded border bg-muted text-[10px] font-mono shadow-sm min-w-[24px] text-center inline-block">
+  <kbd
+    className={`px-1.5 py-0.5 rounded border bg-muted font-mono shadow-sm min-w-[24px] text-center inline-block ${
+      typeof children === "string" && isSymbolKey(children) ? "text-sm leading-[15px]" : "text-[10px]"
+    }`}
+  >
     {children}
   </kbd>
 );
