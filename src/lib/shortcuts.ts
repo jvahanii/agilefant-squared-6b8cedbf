@@ -15,7 +15,8 @@
 import { toast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store/appStore";
 import { useOrgStore } from "@/store/orgStore";
-import { isTimeLoggingEnabled } from "@/store/orgSettingsStore";
+import { isPointsEnabled, isTimeLoggingEnabled } from "@/store/orgSettingsStore";
+import { computePointsVisible } from "@/lib/pointsVisibility";
 import { requestTopLevelRerank } from "@/store/rerankGuardStore";
 import { listSortModeFor, shownTopLevelOrder } from "@/store/listSortStore";
 import { visibleWorkItemIdsRef, visibleBacklogIdsRef, deleteDirectionRef } from "@/store/navigationRefs";
@@ -350,6 +351,46 @@ function stepSelection({ e, state }: ShortcutContext) {
   }
 }
 
+/** One point more (+1) or less (-1); one less than 1 is none, as the phone's − button does. */
+const stepPoints = (points: number | undefined, step: 1 | -1) =>
+  step === 1 ? (points ?? 0) + 1 : (points ?? 0) > 1 ? points! - 1 : undefined;
+
+/**
+ * + and −: the selected items' own points one up or down, as one undo step;
+ * with no item selected, the selected list's. Only where points are on: in
+ * the organization, and not turned off for the tree.
+ */
+function changePoints({ e, state }: ShortcutContext, step: 1 | -1) {
+  const treeId = state.selectedTreeId;
+  const pointsOn = computePointsVisible(
+    isPointsEnabled(useOrgStore.getState().activeOrgId),
+    treeId ? state.backlogTrees[treeId]?.pointsEnabled : null,
+  );
+  if (!pointsOn) return;
+  const shown = (p: number | undefined) => (p == null ? "none" : String(p));
+  const items = state.selectedWorkItemIds.filter((id) => state.workItems[id]);
+  if (items.length > 0) {
+    e.preventDefault();
+    state.runBulk(() => {
+      items.forEach((id) => state.setWorkItemPoints(id, stepPoints(state.workItems[id].points, step)));
+    });
+    const after = useAppStore.getState().workItems;
+    toast({
+      title: items.length === 1
+        ? `Points: ${shown(after[items[0]]?.points)}`
+        : `Points ${step === 1 ? "+1" : "−1"} on ${items.length} items`,
+    });
+    return;
+  }
+  const listId = state.selectedWorkItemIds.length === 0 ? state.selectedBacklogIds[0] : undefined;
+  const list = listId ? state.backlogs[listId] : undefined;
+  if (!list) return;
+  e.preventDefault();
+  const points = stepPoints(list.points, step);
+  state.setBacklogPoints(list.id, points);
+  toast({ title: `List points: ${shown(points)}` });
+}
+
 /** Send an event to whoever opens the dialog, when an item is selected. */
 const onSelectedItems = (event: string) => ({ e, state }: ShortcutContext) => {
   if (state.selectedWorkItemIds.length > 0) {
@@ -529,6 +570,23 @@ export const SHORTCUTS: Shortcut[] = [
     run: (ctx) => setSelectedStatus(ctx, "blocked", "Blocked"),
   },
   status("status-not-started", "n", "not_started", "Not Started"),
+
+  // ─── Points ───────────────────────────────────────────────────────────────
+  {
+    id: "points-up",
+    group: "Other",
+    rows: [{ keys: ["+"], description: "One point more: the selected items, or else the list (where points are on)" }],
+    // Shift is how some keyboards type +. With Ctrl it zooms the page.
+    matches: (e) => plain(e) && !e.altKey && e.key === "+",
+    run: (ctx) => changePoints(ctx, 1),
+  },
+  {
+    id: "points-down",
+    group: "Other",
+    rows: [{ keys: ["-"], description: "One point less, down to none: the selected items, or else the list" }],
+    matches: (e) => plain(e) && !e.altKey && e.key === "-",
+    run: (ctx) => changePoints(ctx, -1),
+  },
 
   // ─── Reparenting & Moving ─────────────────────────────────────────────────
   {

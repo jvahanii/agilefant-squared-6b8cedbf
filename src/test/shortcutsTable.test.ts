@@ -7,7 +7,7 @@ import { describe, it, expect } from "vitest";
 import { SHORTCUTS, SHORTCUT_GROUPS, shortcutRowsByGroup } from "@/lib/shortcuts";
 
 const KEYS = [
-  "a", "b", "d", "h", "i", "k", "l", "m", "n", "o", "p", "q", "r", "t", "u", "y", "z", "?", "/",
+  "a", "b", "d", "h", "i", "k", "l", "m", "n", "o", "p", "q", "r", "t", "u", "y", "z", "?", "/", "+", "-",
   "Enter", "Escape", "Delete", "Backspace", "F2", "Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
 ];
 

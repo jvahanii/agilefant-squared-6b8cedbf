@@ -242,3 +242,60 @@ describe("global shortcuts, key by key", () => {
     expect((await press({ key: "?", shift: true })).shortcutsOverlay).toBe(false);
   });
 });
+
+describe("+ and − change the points", () => {
+  /** Points on in the organization; the tree may turn them off. */
+  function pointsOn(tree: boolean | null = null) {
+    const s = useOrgSettingsStore.getState().settings[ORG];
+    useOrgSettingsStore.setState({ settings: { [ORG]: { ...s, pointsEnabled: true } } } as never);
+    const t = useAppStore.getState().backlogTrees[TREE];
+    useAppStore.setState({ backlogTrees: { [TREE]: { ...t, pointsEnabled: tree } } } as never);
+  }
+  const points = (id: string) => useAppStore.getState().workItems[id]?.points;
+  const listPoints = (id: string) => useAppStore.getState().backlogs[id]?.points;
+
+  it("of the selected items, one step each, as one undo", async () => {
+    seed(["B", "C"]);
+    useAppStore.setState((s) => ({ workItems: { ...s.workItems, C: { ...s.workItems.C, points: 3 } } }));
+    pointsOn();
+    render(<AppLayout />);
+    expect((await press({ key: "+", shift: true })).prevented).toBe(true);
+    expect([points("B"), points("C")]).toEqual([1, 4]);
+    await press({ key: "-" });
+    await press({ key: "-" });
+    expect([points("B"), points("C")]).toEqual([undefined, 2]);
+    await press({ key: "z", ctrl: true });
+    expect([points("B"), points("C")]).toEqual([undefined, 3]);
+  });
+
+  it("of the selected list, with no item selected", async () => {
+    seed([], [L2]);
+    pointsOn();
+    render(<AppLayout />);
+    await press({ key: "+" });
+    await press({ key: "+" });
+    expect(listPoints(L2)).toBe(2);
+    await press({ key: "-" });
+    await press({ key: "-" });
+    expect(listPoints(L2)).toBeUndefined();
+  });
+
+  it("not where points are off, in the organization or the tree", async () => {
+    seed(["B"]);
+    render(<AppLayout />);
+    expect((await press({ key: "+" })).prevented).toBe(false);
+    pointsOn(false);
+    expect((await press({ key: "+" })).prevented).toBe(false);
+    expect(points("B")).toBeUndefined();
+  });
+
+  it("not with Ctrl, which zooms the page, nor while typing", async () => {
+    seed(["B"]);
+    pointsOn();
+    render(<AppLayout />);
+    expect((await press({ key: "+", ctrl: true })).prevented).toBe(false);
+    expect((await press({ key: "-", ctrl: true })).prevented).toBe(false);
+    await press({ key: "+", target: "input" });
+    expect(points("B")).toBeUndefined();
+  });
+});
