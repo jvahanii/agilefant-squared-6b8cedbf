@@ -66,8 +66,8 @@ export function hasListToCopy(now = new Date()): boolean {
 
 /**
  * True from taking the request until the copied list is open. A new account
- * would otherwise meet "Add your first item" and "Who is it for?" while its
- * copy is being made (2026-11-24): it came for the list, so it waits for that.
+ * would otherwise meet "Add your first item" while its copy is being made
+ * (2026-11-24): it came for the list, so it waits for that.
  */
 export const useListCopyStore = create<{ copying: boolean }>(() => ({ copying: false }));
 

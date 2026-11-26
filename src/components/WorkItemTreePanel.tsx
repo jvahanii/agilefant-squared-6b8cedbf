@@ -33,7 +33,6 @@ import { FirstItemPrompt } from "./listPanel/FirstItemPrompt";
 import { GettingStarted } from "./listPanel/GettingStarted";
 import { firstList } from "./listPanel/firstList";
 import { useOrgIsEmpty } from "./listPanel/useOrgIsEmpty";
-import { applyStart, starterShape, type StartKind } from "./listPanel/startPresets";
 import { countNodes, takeTriedList } from "@/lib/tryList";
 import { hasListToCopy, useListCopyStore } from "@/lib/listCopy";
 import { toast } from "@/hooks/use-toast";
@@ -188,19 +187,16 @@ export function WorkItemTreePanel() {
   }, [placeKey]);
 
   const canManageOrg = !!activeMembership && (effectiveRole === "owner" || effectiveRole === "admin");
-  // Asked while the starter lists are untouched: under the first-item box, or,
-  // once there are items (a list brought from the try-out arrives before the
-  // box is ever seen), in the getting-started panel.
   // Signed up to copy a public list: the copy is being made, and the
   // account opens in it (hooks/usePublishedListCopies.ts), not in the
   // first-item box with its questions.
+  //
+  // "Who is it for? Just me / A team" was asked here from 2026-11-16 to
+  // 11-26. Of the first newcomers who saw it, one flipped it eight times in
+  // a minute and none needed it: every account starts as My work › Now /
+  // Later, and boards and story points are in the organisation's settings.
   const copyingList = useListCopyStore((s) => s.copying);
   const awaitingCopy = orgIsEmpty && (copyingList || hasListToCopy());
-  const starter = canManageOrg && activeOrgId && !awaitingCopy ? starterShape(backlogTrees, backlogs) : null;
-  const startProp =
-    starter && activeOrgId
-      ? { kind: starter.kind, onChoose: (kind: StartKind) => applyStart(kind, starter, activeOrgId) }
-      : undefined;
   const orgProp =
     activeMembership && canManageOrg
       ? { name: activeMembership.organization_name, onRename: (name: string) => renameOrganization(activeMembership.organization_id, name) }
@@ -218,7 +214,6 @@ export function WorkItemTreePanel() {
       listName={backlogs[firstItemPlace.backlogId]?.name ?? "this list"}
       treeName={backlogTrees[firstItemPlace.treeId]?.name}
       onAdd={addFirstItem}
-      start={startProp}
       org={orgProp}
     />
   ) : null;
@@ -798,7 +793,7 @@ export function WorkItemTreePanel() {
               </div>
             )}
             {activeOrgId && (
-              <GettingStarted key={activeOrgId} orgId={activeOrgId} workItems={workItems} start={startProp} org={orgProp} />
+              <GettingStarted key={activeOrgId} orgId={activeOrgId} workItems={workItems} org={orgProp} />
             )}
           </div>
         </WorkItemRootDropZone>

@@ -442,12 +442,11 @@ describe("signing up to copy a public list", () => {
     seed({ changeLog: [] });
   });
 
-  it("waits for the copy instead of asking for a first item or who it is for", () => {
+  it("waits for the copy instead of asking for a first item", () => {
     rememberListToCopy("test-token-000000000000000000000");
     renderPanel();
     expect(screen.getByRole("status").textContent).toMatch(/Copying the list into your account/);
     expect(screen.queryByRole("heading", { name: "Add your first item" })).toBeNull();
-    expect(screen.queryByRole("group", { name: "Who is it for?" })).toBeNull();
   });
 
   it("keeps waiting once the request is taken, and asks as usual if the copy came to nothing", () => {
@@ -456,74 +455,30 @@ describe("signing up to copy a public list", () => {
     expect(screen.queryByRole("heading", { name: "Add your first item" })).toBeNull();
     act(() => useListCopyStore.setState({ copying: false }));
     expect(screen.getByRole("heading", { name: "Add your first item" })).toBeTruthy();
-    expect(screen.getByRole("group", { name: "Who is it for?" })).toBeTruthy();
   });
 });
 
-describe("who it is for", () => {
-  beforeEach(() => {
-    seed({ changeLog: [] });
-    useOrgSettingsStore.setState({ settings: {} } as never);
-    db.upserts = [];
-  });
-  const names = () => {
-    const { backlogTrees, backlogs } = useAppStore.getState();
-    const tree = backlogTrees[TREE];
-    return [tree.name, ...tree.rootBacklogIds.map((id) => backlogs[id].name)];
-  };
-  const choose = async (label: RegExp) => {
-    await act(async () => {
-      fireEvent.click(screen.getByRole("radio", { name: label }));
-    });
-  };
+describe("the start", () => {
+  beforeEach(() => seed({ changeLog: [] }));
 
-  it("is asked of a new organisation's owner, with just me chosen", () => {
-    renderPanel();
-    expect(screen.getByRole("group", { name: "Who is it for?" })).toBeTruthy();
-    expect((screen.getByRole("radio", { name: /Just me/ }) as HTMLInputElement).checked).toBe(true);
-    expect(screen.queryByRole("link", { name: "Team settings" })).toBeNull();
-  });
-
-  it("a team gets a backlog and a sprint board with story points, and says how to add people", async () => {
-    renderPanel();
-    await choose(/A team/);
-    expect(names()).toEqual(["Team", "Backlog", "This sprint"]);
-    expect(screen.getByText("Team › Backlog")).toBeTruthy();
-    expect(useAppStore.getState().backlogs[LATER].viewMode).toBe("board");
-    expect(useOrgSettingsStore.getState().settings[ORG]).toMatchObject({ boardsEnabled: true, pointsEnabled: true });
-    expect(screen.getByRole("link", { name: "Team settings" }).getAttribute("href")).toBe("/settings/team");
-    expect((screen.getByRole("radio", { name: /A team/ }) as HTMLInputElement).checked).toBe(true);
-    const logged = useAppStore.getState().changeLog.find((e) => e.action === "Start chosen");
-    expect(logged).toMatchObject({ entityType: "organization", entityId: ORG, details: "team" });
-  });
-
-  it("choosing just me again puts the start back as it was", async () => {
-    renderPanel();
-    await choose(/A team/);
-    await choose(/Just me/);
-    expect(names()).toEqual(["My work", "Now", "Later"]);
-    expect(useAppStore.getState().backlogs[LATER].viewMode).toBe("list");
-    expect(useOrgSettingsStore.getState().settings[ORG]).toMatchObject({ boardsEnabled: false, pointsEnabled: false });
-    expect(useAppStore.getState().changeLog.filter((e) => e.action === "Start chosen").map((e) => e.details)).toEqual(["own", "team"]);
-  });
-
-  it("is not asked of a member, who cannot rename lists or change settings", () => {
-    seed({}, "member");
-    renderPanel();
-    expect(screen.queryByRole("group", { name: "Who is it for?" })).toBeNull();
-  });
-
-  it("is not asked once the lists are the person's own, so nothing of theirs is renamed", () => {
-    const { backlogs } = useAppStore.getState();
-    seed({ backlogs: { ...backlogs, [NOW]: { ...backlogs[NOW], name: "Errands" } } });
+  // "Who is it for? Just me / A team" was asked from 2026-11-16 to 11-26.
+  it("asks nothing about who it is for: a new account starts as My work › Now / Later", () => {
     renderPanel();
     expect(screen.getByRole("heading", { name: "Add your first item" })).toBeTruthy();
     expect(screen.queryByRole("group", { name: "Who is it for?" })).toBeNull();
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.getByText("My work › Now")).toBeTruthy();
   });
 
   it("recognises only the two starts, untouched", () => {
     const { backlogTrees, backlogs } = useAppStore.getState();
     expect(starterShape(backlogTrees, backlogs)?.kind).toBe("own");
+    const team = {
+      ...backlogs,
+      [NOW]: { ...backlogs[NOW], name: "Backlog" },
+      [LATER]: { ...backlogs[LATER], name: "This sprint" },
+    };
+    expect(starterShape({ [TREE]: { ...backlogTrees[TREE], name: "Team" } }, team)?.kind).toBe("team");
     const nested = { ...backlogs, [NOW]: { ...backlogs[NOW], childrenIds: ["x"] } };
     expect(starterShape(backlogTrees, nested)).toBeNull();
     const renamedTree = { [TREE]: { ...backlogTrees[TREE], name: "Home" } };
@@ -539,26 +494,20 @@ describe("arriving from the try-out", () => {
     useOrgSettingsStore.setState({ settings: {} } as never);
   });
 
-  it("still asks who it is for and offers the rename, in the getting-started panel", async () => {
+  it("offers the rename in the getting-started panel, with no question about who it is for", () => {
     saveTryList(tried);
     renderPanel();
     expect(screen.queryByRole("heading", { name: "Add your first item" })).toBeNull();
     const panel = screen.getByRole("region", { name: /Getting started|That's the basics/ });
-    expect(within(panel).getByRole("group", { name: "Who is it for?" })).toBeTruthy();
     expect(within(panel).getByText(/Your organisation is called/)).toBeTruthy();
-    await act(async () => {
-      fireEvent.click(within(panel).getByRole("radio", { name: /A team/ }));
-    });
-    const { backlogTrees, backlogs } = useAppStore.getState();
-    expect([backlogTrees[TREE].name, backlogs[NOW].name, backlogs[LATER].name]).toEqual(["Team", "Backlog", "This sprint"]);
+    expect(within(panel).queryByRole("radio")).toBeNull();
     expect(Object.values(useAppStore.getState().workItems).map((i) => i.title)).toEqual(["From the try-out"]);
   });
 
-  it("offers neither to a member", () => {
+  it("offers no rename to a member", () => {
     saveTryList(tried);
     seed({}, "member");
     renderPanel();
-    expect(screen.queryByRole("group", { name: "Who is it for?" })).toBeNull();
     expect(screen.queryByText(/Your organisation is called/)).toBeNull();
   });
 });

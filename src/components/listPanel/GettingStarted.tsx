@@ -3,8 +3,6 @@ import { CheckCircle2, Circle, Smartphone, X } from "lucide-react";
 import type { WorkItem } from "@/types/models";
 import { closeSteps, gettingStartedSteps, stepsClosed, type StepKey } from "./startSteps";
 import { OrgNameLine } from "./OrgNameLine";
-import { StartChoice } from "./StartChoice";
-import type { StartKind } from "./startPresets";
 import { useInstallWay } from "@/lib/installPrompt";
 
 const TEXT: Record<StepKey, { title: string; how: string }> = {
@@ -29,20 +27,17 @@ const TEXT: Record<StepKey, { title: string; how: string }> = {
  * August to mid-November 2026 only 4 came back after their first day. The
  * steps tick off as they are done and the panel stays until closed.
  *
- * It also carries "Who is it for?" and the organisation's name, which
- * otherwise live under the first-item box: someone arriving from the try-out
- * brings items along, so that box is never shown to them (2026-11-16).
+ * It also carries the organisation's name, which otherwise lives under the
+ * first-item box: someone arriving from the try-out brings items along, so
+ * that box is never shown to them (2026-11-16).
  */
 export function GettingStarted({
   orgId,
   workItems,
-  start,
   org,
 }: {
   orgId: string;
   workItems: Record<string, WorkItem>;
-  /** Who it is for, while the starter lists are untouched and the person may change them. */
-  start?: { kind: StartKind; onChoose: (kind: StartKind) => Promise<void> };
   /** The organisation's name, for those who may rename it. */
   org?: { name: string; onRename: (name: string) => Promise<void> };
 }) {
@@ -85,11 +80,10 @@ export function GettingStarted({
           <X className="w-4 h-4" />
         </button>
       </div>
-      {/* First: one-time choices, worth making before the lists fill up. */}
-      {(start || org) && (
+      {/* First: a one-time choice, worth making before the lists fill up. */}
+      {org && (
         <div className="mt-2 space-y-2 border-b pb-2.5">
-          {start && <StartChoice kind={start.kind} onChoose={start.onChoose} />}
-          {org && <OrgNameLine name={org.name} onRename={org.onRename} />}
+          <OrgNameLine name={org.name} onRename={org.onRename} />
         </div>
       )}
       <ol className="mt-1.5 space-y-1.5">
