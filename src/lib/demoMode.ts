@@ -3,9 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * The try-out at /try runs the real app on example data held only in the
  * browser (2026-11-16). While it runs, the database client answers every
- * call itself and sends nothing: reads come back empty, writes come back as
- * done, so the app's saving and retry queues settle as if saved, and nothing
- * of the try-out reaches the database.
+ * call itself and sends nothing but the count that the try-out was opened:
+ * reads come back empty, writes come back as done, so the app's saving and
+ * retry queues settle as if saved, and nothing of the try-out reaches the
+ * database.
  *
  * It is switched on for the rest of the page's life, never off: leaving the
  * try-out reloads the page (pages/Try.tsx), so no signed-in session ever
@@ -51,9 +52,13 @@ export function enterDemoMode(): void {
   if (on) return;
   on = true;
   const client = supabase as unknown as Record<string, unknown>;
+  // The one call that still goes out: that the try-out was opened
+  // (lib/onboardingSteps.ts), which carries nothing of it.
+  const realRpc = (client.rpc as (name: string, args?: unknown) => unknown).bind(supabase);
   client.from = () => emptyQuery();
   client.schema = () => ({ from: () => emptyQuery(), rpc: async () => ({ data: null, error: null }) });
-  client.rpc = () => emptyQuery();
+  client.rpc = (name: string, args?: unknown) =>
+    name === "count_onboarding_step" ? realRpc(name, args) : emptyQuery();
   client.channel = () => fakeChannel();
   client.removeChannel = async () => "ok";
   client.removeAllChannels = async () => [];
