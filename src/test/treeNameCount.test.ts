@@ -3,7 +3,7 @@
  * hold at the top level, brought up to date after a job import.
  */
 import { describe, it, expect } from "vitest";
-import { nameWithoutCount, treeNameUpdates } from "@/lib/treeNameCount";
+import { listNameUpdates, nameWithoutCount, treeNameUpdates } from "@/lib/treeNameCount";
 import type { WorkItem } from "@/types/models";
 
 const T = "org::bt-1";
@@ -64,5 +64,37 @@ describe("the tree's count of its lists", () => {
     expect(nameWithoutCount('"Ei" papereiden perusteella (174, total 263)')).toBe('"Ei" papereiden perusteella');
     expect(nameWithoutCount("Prosessit")).toBe("Prosessit");
     expect(nameWithoutCount("A (b) c")).toBe("A (b) c");
+  });
+});
+
+describe("the lists' own counts", () => {
+  it("replaces the count of each list in the tree that has one with its top-level items", () => {
+    const s = state();
+    s.backlogs.skip = list("skip", "Skipattu");
+    s.workItems.k1 = item("k1", "skip");
+    expect(listNameUpdates(s)).toEqual([
+      { backlogId: "paat", name: "Päättyneet prosessit (1)" },
+      { backlogId: "lanka", name: "Lanka vetämässä (2)" },
+      { backlogId: "pros", name: "Prosessit (1)" },
+      { backlogId: "hae", name: "Hae näitä seuraavaksi (1)" },
+    ]);
+  });
+
+  it("leaves a list without a count, another note in parentheses, and other trees", () => {
+    const names = listNameUpdates(state()).map((u) => u.backlogId);
+    expect(names).not.toContain("ei"); // "(174, total 263)" is not a count
+    expect(names).not.toContain("open");
+  });
+
+  it("leaves a count that is already right, and the tree's count still finds the renamed lists", () => {
+    const s = state();
+    for (const { backlogId, name } of listNameUpdates(s)) s.backlogs[backlogId] = { ...s.backlogs[backlogId], name };
+    expect(listNameUpdates(s)).toEqual([]);
+    expect(treeNameUpdates(s)).toEqual([{ treeId: T, name: "MWB uuden työn saaminen (6)" }]);
+  });
+
+  it("does nothing without its tree", () => {
+    expect(listNameUpdates(state("Something else"))).toEqual([]);
+    expect(listNameUpdates({} as never)).toEqual([]);
   });
 });

@@ -4,8 +4,9 @@
  *
  * Asked for on 2026-11-26 for the job hunt: the tree "MWB uuden työn
  * saaminen" shows the applications made so far, the top-level items of four of
- * its lists added up. Each list's own name carries a count typed by hand, as
- * "Lanka vetämässä (55)", so lists are found by their name without it.
+ * its lists added up. Each list's own name carries its own count, as
+ * "Lanka vetämässä (55)", so lists are found by their name without it; the
+ * lists in the tree that carry a count have it kept up to date too.
  */
 import { topLevelItems } from "@/lib/workItemRows";
 import type { BacklogTree, Backlog, WorkItem } from "@/types/models";
@@ -56,6 +57,36 @@ export function treeNameUpdates(
       const count = lists.reduce((n, list) => n + topLevelItems(state.workItems ?? {}, tree.id, new Set([list.id])).length, 0);
       const name = `${rule.tree} (${count})`;
       if (name !== tree.name) out.push({ treeId: tree.id, name });
+    }
+  }
+  return out;
+}
+
+/** A list's count at the end of its name, "(55)": a number and nothing else. */
+const LIST_COUNT = /\s*\(\d+\)\s*$/;
+
+/**
+ * The names the lists of the rules' trees take, where one differs: each list
+ * whose name ends in a count, as "Prosessit (5)", gets its own number of
+ * top-level items there. A list without a count, or with another note in
+ * parentheses, is left as it is.
+ */
+export function listNameUpdates(
+  state: {
+    backlogTrees: Record<string, Pick<BacklogTree, "id" | "name">>;
+    backlogs: Record<string, Pick<Backlog, "id" | "name" | "treeId">>;
+    workItems: Record<string, WorkItem>;
+  },
+  rules: TreeNameCount[] = TREE_NAME_COUNTS,
+): Array<{ backlogId: string; name: string }> {
+  const out: Array<{ backlogId: string; name: string }> = [];
+  const trees = Object.values(state.backlogTrees ?? {}).filter((t) => rules.some((r) => nameWithoutCount(t.name) === r.tree));
+  for (const tree of trees) {
+    for (const list of Object.values(state.backlogs ?? {})) {
+      if (list.treeId !== tree.id || !LIST_COUNT.test(list.name)) continue;
+      const count = topLevelItems(state.workItems ?? {}, tree.id, new Set([list.id])).length;
+      const name = `${list.name.replace(LIST_COUNT, "")} (${count})`;
+      if (name !== list.name) out.push({ backlogId: list.id, name });
     }
   }
   return out;

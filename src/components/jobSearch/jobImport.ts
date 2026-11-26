@@ -17,7 +17,7 @@ import { callGmail, type ImportMode, type RunnableSearch } from "@/lib/gmailConn
 import { AUTO_PLACE_TOAST_MS, countOpenAds, hasClosingDate, importListOrder } from "@/lib/autoPlace";
 import { sortTopLevel } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
-import { treeNameUpdates } from "@/lib/treeNameCount";
+import { listNameUpdates, treeNameUpdates } from "@/lib/treeNameCount";
 import { waitForItems } from "@/lib/waitForItems";
 
 /** The search being imported from, and by whom. */
@@ -375,11 +375,12 @@ export async function importJobs(
       }
     });
 
-    // A tree that carries a count of its lists in its name (lib/treeNameCount)
-    // gets it brought up to date, the import being when those lists change.
+    // A tree that carries a count of its lists in its name (lib/treeNameCount),
+    // and its lists that carry their own, get them brought up to date, the import being when those lists change.
     // Its own undo step, apart from the ranking's.
     {
       const latest = useAppStore.getState();
+      for (const { backlogId, name } of listNameUpdates(latest)) latest.renameBacklog(backlogId, name);
       for (const { treeId, name } of treeNameUpdates(latest)) latest.renameBacklogTree(treeId, name);
     }
 
