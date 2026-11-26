@@ -64,6 +64,7 @@ import { OrgSwitcher } from "@/components/OrgSwitcher";
 import { RoleSimulator } from "@/components/RoleSimulator";
 import { UserGuideDialog } from "@/components/UserGuideDialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useOnboardingStep } from "@/lib/onboardingSteps";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrambleProvider, useScramble } from "@/contexts/ScrambleContext";
 import {
@@ -141,6 +142,8 @@ function BurnupDialogHost() {
 
 function AppLayoutInner({ banner, tryOut }: { banner?: ReactNode; tryOut: boolean }) {
   const { user } = useAuth();
+  // A day the app was opened, for a newcomer's first 30 days (lib/onboardingSteps).
+  useOnboardingStep("opened", !!user && !tryOut);
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
   // Whether there is anything to undo or redo, not how much, and not the

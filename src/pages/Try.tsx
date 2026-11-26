@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useWebAnalytics } from "@/lib/webAnalytics";
+import { useOnboardingStep } from "@/lib/onboardingSteps";
 import { enterDemoMode } from "@/lib/demoMode";
 import { demoContent, DEMO_ORG, visitorOutline } from "@/lib/demoContent";
 import { loadTryList, saveTryList, toTree } from "@/lib/tryList";
@@ -102,6 +103,7 @@ function TryOutBar() {
 
 export default function Try() {
   useWebAnalytics();
+  useOnboardingStep("try_opened");
   const [seed] = useState(startTryOut);
 
   // What the visitor adds is kept for sign-up; the examples are not.

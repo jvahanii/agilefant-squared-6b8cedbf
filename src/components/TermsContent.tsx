@@ -39,6 +39,7 @@ export const RETENTION: ReadonlyArray<{ what: string; kept: string }> = [
   { what: "Backups", kept: "14 days; an organisation that no longer changes keeps its newest one" },
   { what: "A deleted organisation's remaining data and backups", kept: "14 days after deletion" },
   { what: "Server logs (IP address, browser)", kept: "About a week" },
+  { what: "Days you opened the app in your account's first 30 days", kept: "Until you delete your account" },
 ];
 
 const link = "text-primary underline underline-offset-2";
@@ -115,8 +116,13 @@ export function TermsContent() {
           record who you are or follow you to other sites.
         </li>
         <li>
-          <strong>In your browser:</strong> the sign-in cookies Clerk needs, and a copy of your data so the app opens
-          quickly. A list made on the try-out page before signing up stays only in your browser until it moves into
+          <strong>Steps into Agilefant:</strong> that a public list, the try-out page, sign-in or sign-up was opened,
+          counted once per browser with nothing that says who you are; and, for the first 30 days of your account,
+          on which days you opened the app. We use these counts to see whether new users find their way in.
+        </li>
+        <li>
+          <strong>In your browser:</strong> the sign-in cookies Clerk needs, a note of which of those steps were
+          already counted, and a copy of your data so the app opens quickly. A list made on the try-out page before signing up stays only in your browser until it moves into
           your new account, or is a week old. There is no advertising or tracking.
         </li>
       </ul>

@@ -5,6 +5,7 @@ import { passesJobFilters, sourceCounts, storedJobFilters, storeJobFilters, type
 import { useParams } from "react-router-dom";
 import { ArrowDown, ArrowDownAZ, ArrowUp, ArrowUpDown, CalendarClock, CalendarRange, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, RefreshCw, Search, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOnboardingStep } from "@/lib/onboardingSteps";
 import { IconizedTitle } from "@/components/IconizedTitle";
 import { PublicAnnouncement } from "@/components/PublicAnnouncement";
 import { StarRating } from "@/components/StarRating";
@@ -113,6 +114,8 @@ interface Lookups {
  */
 export default function PublicBacklog() {
   const { token = "" } = useParams<{ token: string }>();
+  // Counted without the link: its address is the list's secret.
+  useOnboardingStep("public_list_opened");
   const [state, setState] = useState<LoadState>({ status: "loading" });
   // Whether this link's page carries the job-ad filters. Asked of the link
   // itself: they are made for a list of imported job ads, and are switched on

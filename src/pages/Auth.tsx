@@ -1,4 +1,5 @@
 import { useWebAnalytics } from "@/lib/webAnalytics";
+import { useOnboardingStep } from "@/lib/onboardingSteps";
 import { Link } from "react-router-dom";
 import { SignIn, SignUp } from "@clerk/clerk-react";
 import { clerkEnabled } from "@/lib/clerkBridge";
@@ -23,6 +24,7 @@ import { pendingInvite } from "@/lib/invites";
  */
 export default function Auth({ mode = "sign-in" }: { mode?: "sign-in" | "sign-up" }) {
   useWebAnalytics();
+  useOnboardingStep(mode === "sign-up" ? "signup_opened" : "signin_opened");
   const appearance = { elements: { rootBox: "w-full", card: "w-full shadow-none border" } };
 
   // Clerk is the only way in now, and its components throw outside

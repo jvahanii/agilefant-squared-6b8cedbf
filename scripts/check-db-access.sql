@@ -12,7 +12,10 @@ WITH allowed_for_anon(name) AS (
   -- get_published_backlog_last: the list as last built, while a fresh one is slow.
   VALUES ('get_published_backlog'), ('get_published_link_features'), ('get_published_backlog_last'),
   -- What the invite page asks before anyone signs in: the organisation's name.
-         ('get_invite')
+         ('get_invite'),
+  -- A step into Agilefant counted before signing up (20261126120000): it only adds a
+  -- row, at most 1000 of a step a day.
+         ('count_onboarding_step')
 )
 SELECT 'function' AS kind,
        p.oid::regprocedure::text AS name,
