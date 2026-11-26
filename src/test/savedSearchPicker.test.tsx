@@ -226,6 +226,22 @@ describe("SavedSearchPicker", () => {
     expect(screen.getByText("Not selected: no longer accepting applications. Tick it to import anyway.")).toBeInTheDocument();
   });
 
+  it("reads every undated posting, not only the first forty", async () => {
+    callGmail.mockResolvedValueOnce({
+      links: Array.from({ length: 50 }, (_, i) => link({ url: `https://x/${i}`, title: `Job ${i}` })),
+    });
+    postingFacts.mockImplementation(async ({ links }: { links: { url: string }[] }) => ({
+      facts: links.map((l) => ({ url: l.url, deadline: l.url === "https://x/49" ? "2026-12-09" : null, applicationsClosed: false })),
+    }));
+
+    render(<SavedSearchPicker search={SEARCH} mode="jobs" organizationId="org-1" onClose={vi.fn()} />);
+    await screen.findByText("Job 49");
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+    const read = postingFacts.mock.calls.flatMap(([body]) => body.links.map((l: { url: string }) => l.url));
+    expect(read).toHaveLength(50);
+    expect(screen.getAllByText(/^closes /)).toHaveLength(1);
+  });
+
   it("lists the jobs as soon as the mail has been read, and shows how far the rest has got", async () => {
     // The list used to wait for every posting to be read — most of the wait,
     // and none of it needed to start reading the list.

@@ -35,8 +35,16 @@ import { postingReaderAvailable, readableInBrowser, readPostingFacts } from "@/l
 
 /** Postings read per posting_facts call — the server accepts at most this many. */
 const POSTINGS_PER_CALL = 6;
-/** Postings read per search, as the server capped it when it read them itself. */
-const MAX_POSTINGS_READ = 40;
+/**
+ * Postings read per search. It was 40, as the server capped it when it read
+ * them itself inside one request — a limit about that request's running time,
+ * which reading in batches of six no longer has. A morning's search on
+ * 2026-11-26 found more than 40 undated postings, read the first 40 and left
+ * the rest "deadline unknown": among them a DNA ad stating "9.12.2026
+ * mennessä" plainly, which the import read a minute later. This bound is only
+ * against a runaway list; at about a second a batch it is half a minute.
+ */
+const MAX_POSTINGS_READ = 180;
 
 /**
  * How far along the search is, out of a hundred, when each part begins.
