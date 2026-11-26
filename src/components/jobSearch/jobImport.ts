@@ -17,6 +17,7 @@ import { callGmail, type ImportMode, type RunnableSearch } from "@/lib/gmailConn
 import { AUTO_PLACE_TOAST_MS, countOpenAds, hasClosingDate, importListOrder } from "@/lib/autoPlace";
 import { sortTopLevel } from "@/lib/listSort";
 import { topLevelItems } from "@/lib/workItemRows";
+import { treeNameUpdates } from "@/lib/treeNameCount";
 import { waitForItems } from "@/lib/waitForItems";
 
 /** The search being imported from, and by whom. */
@@ -373,6 +374,14 @@ export async function importJobs(
         mirrored = toMirror.length;
       }
     });
+
+    // A tree that carries a count of its lists in its name (lib/treeNameCount)
+    // gets it brought up to date, the import being when those lists change.
+    // Its own undo step, apart from the ranking's.
+    {
+      const latest = useAppStore.getState();
+      for (const { treeId, name } of treeNameUpdates(latest)) latest.renameBacklogTree(treeId, name);
+    }
 
     // The check started with the search, if it was of this list. Done by now,
     // its answer goes into this summary — the closed ones already left out of
