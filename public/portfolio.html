@@ -321,6 +321,19 @@ h2 { font-size: var(--step-2); font-weight: 700; letter-spacing: -0.015em; }
 .mwhere { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
 @media (max-width: 860px) { .mgrid { grid-template-columns: minmax(0, 1fr); } }
 
+/* Organization Design & Systems Thinking */
+.od { display: grid; gap: 1.5rem; --app: var(--c-iq); }
+.od-top { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 2rem; align-items: start; }
+.od-text { display: grid; gap: 1.1rem; }
+.od-stats { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.od-stats div { display: grid; gap: 0.1rem; padding: 0.75rem 1rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); min-width: 9rem; }
+.od-stats b { font-family: var(--display); font-weight: 800; font-size: var(--step-2); line-height: 1; font-variant-numeric: tabular-nums; }
+.od-stats span { font-size: 0.8rem; color: var(--muted); }
+.od-photo { margin: 0; display: grid; gap: 0.45rem; }
+.od-photo img { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 14px; box-shadow: 0 0 0 1px var(--line), 0 10px 24px -16px rgba(20, 30, 60, 0.45); }
+.od-photo figcaption { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+@media (max-width: 860px) { .od-top { grid-template-columns: minmax(0, 1fr); } }
+
 .project.minor .story h3 { font-size: var(--step-1); }
 .project.minor .story h3 .sub { font-size: var(--step-0); }
 
@@ -391,6 +404,41 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
         <figure class="quote"><blockquote>It's wonderful that you help people learn AI hands-on and bring together people from different backgrounds. On your own it's really hard to keep your skills up if a job search drags on.</blockquote><figcaption><b>Anu Petäjä</b>, Commercial Leader <span class="tr">translated from Finnish</span></figcaption></figure>
         <figure class="quote"><blockquote>Learning up-to-date new skills at its best. The young people also made new friends and memories that will last. As a parent, a big thank you for making this experience possible!</blockquote><figcaption><b>Varpu Sneck-Lehtinen</b>, HR Business Partner, parent of a participant in the youth workshop <span class="tr">translated from Finnish</span></figcaption></figure>
         <figure class="quote"><blockquote>A top-class training, and a truly excellent experience to be part of. A warm recommendation: keep it going!</blockquote><figcaption><b>Suvi Keinänen</b>, Commercial Digital Business and Customer Experience Professional <span class="tr">translated from Finnish</span></figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="od-title" id="org-design">
+    <div class="section-head">
+      <h2 id="od-title">Organization Design &amp; Systems Thinking</h2>
+      <p class="eyebrow">Two-day training with Taru Vasenius</p>
+    </div>
+    <div class="od">
+      <div class="od-top">
+        <div class="od-text">
+          <p class="ws-lead">A two-day course on designing organisations that adapt, which I run at DNA with Taru Vasenius. It is open to anyone in the company, and colleagues from Telenor have joined too. Mixed groups model their own organisation's dynamics on the whiteboard and look for the structures that slow it down.</p>
+          <ul class="points">
+            <li>Systems modelling: causal loop diagrams of the participants' own organisation.</li>
+            <li>Feature teams versus component teams, and what each does to dependencies and learning.</li>
+            <li>Queues, flow and lead time, and why local optimisation makes the whole slower.</li>
+            <li>Multi-skilling, learning and team design for adaptiveness.</li>
+          </ul>
+          <div class="od-stats">
+            <div><b>89</b><span>Net Promoter Score</span></div>
+            <div><b>2 days</b><span>hands-on, whiteboard first</span></div>
+          </div>
+        </div>
+        <figure class="od-photo"><img src="/portfolio-images/od-systems-map.jpg" alt="A whiteboard covered in a causal loop diagram of sticky notes such as item lead time, number of single-component teams, domain complexity and NPS, joined by arrows" width="1200" height="946" loading="lazy"><figcaption>A systems model drawn during the course at DNA</figcaption></figure>
+      </div>
+      <div class="quotes">
+        <figure class="quote"><blockquote>“Hey, let's make our organisation slow,” said no one ever. So we learned to be fast.</blockquote><figcaption>Online Development Manager, DNA <span class="tr">translated from Finnish</span></figcaption></figure>
+        <figure class="quote"><blockquote>One of the best trainings I've had the privilege to participate in. Ever! Your skillset and dynamic are absolutely golden. 5/5, would recommend to anyone.</blockquote><figcaption>Delivery Team Lead, DNA</figcaption></figure>
+        <figure class="quote"><blockquote>Definitely one of the best trainings I've been to in a long time. Lots of new insights into how development work should be done.</blockquote><figcaption>Development Manager, DNA <span class="tr">translated from Finnish</span></figcaption></figure>
+        <figure class="quote"><blockquote>Thank you for a good two days of learning. I was impressed by the content, and even more so by your facilitation.</blockquote><figcaption>Participant, Telenor Sweden</figcaption></figure>
+        <figure class="quote"><blockquote>I can't remember the last training that set my head buzzing with this many thoughts at once.</blockquote><figcaption>People Operations Lead, DNA <span class="tr">translated from Finnish</span></figcaption></figure>
+        <figure class="quote"><blockquote>We should focus more on forming feature teams and driving them instead of component teams.</blockquote><figcaption>Participant, DNA</figcaption></figure>
+        <figure class="quote"><blockquote>Learn that queues are bad, bad, bad, bad!</blockquote><figcaption>Participant, DNA Corporate Business <span class="tr">translated from Finnish</span></figcaption></figure>
+        <figure class="quote"><blockquote>I went home both days feeling very energized.</blockquote><figcaption>Participant</figcaption></figure>
       </div>
     </div>
   </section>
