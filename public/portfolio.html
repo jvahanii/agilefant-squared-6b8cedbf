@@ -335,6 +335,27 @@ h2 { font-size: var(--step-2); font-weight: 700; letter-spacing: -0.015em; }
 .od-photo figcaption { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
 @media (max-width: 860px) { .od-top { grid-template-columns: minmax(0, 1fr); } }
 
+/* Table of contents: a sticky strip of section links under the intro */
+.toc {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  margin-block: -2.5rem -2rem; padding-block: 0.6rem;
+  background: var(--bg);
+  box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--line);
+  clip-path: inset(0 -100vmax -1px -100vmax);
+}
+.toc ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 0.4rem; overflow-x: auto; scrollbar-width: none; }
+.toc ul::-webkit-scrollbar { display: none; }
+.toc li { flex: none; }
+.toc a {
+  display: block; padding: 0.4rem 0.8rem; border-radius: 999px; white-space: nowrap;
+  font-size: 0.85rem; font-weight: 500; text-decoration: none; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line);
+}
+.toc a:hover { background: var(--fant); color: var(--fant-ink); border-color: var(--fant); }
+section[id] { scroll-margin-top: 4.5rem; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+@media (max-width: 760px) { .toc { margin-block: -1.5rem -1rem; } }
+
 .project.minor .story h3 { font-size: var(--step-1); }
 .project.minor .story h3 .sub { font-size: var(--step-0); }
 
@@ -377,6 +398,18 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
       </ul>
     </div>
   </header>
+
+  <nav class="toc" aria-label="On this page">
+    <ul>
+      <li><a href="#workshops">CollabAI workshops</a></li>
+      <li><a href="#org-design">Org design training</a></li>
+      <li><a href="#build-log">Build log</a></li>
+      <li><a href="#stack">How we build</a></li>
+      <li><a href="#apps">Apps</a></li>
+      <li><a href="#writing">Writing &amp; research</a></li>
+      <li><a href="#less">LeSS Meetup</a></li>
+    </ul>
+  </nav>
 
   <section aria-labelledby="ws-title" id="workshops">
     <div class="section-head">
@@ -447,7 +480,7 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
     </div>
   </section>
 
-  <section aria-labelledby="tl-title">
+  <section aria-labelledby="tl-title" id="build-log">
     <div class="section-head">
       <h2 id="tl-title">2026 build log</h2>
       <p class="eyebrow">First commit to latest push</p>
@@ -517,7 +550,7 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.
     </div>
   </section>
 
-  <section aria-labelledby="apps-title">
+  <section aria-labelledby="apps-title" id="apps">
     <div class="section-head">
       <h2 id="apps-title">Apps</h2>
       <p class="eyebrow">Newest activity first</p>
